@@ -1,0 +1,178 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String   @default("")
+  passwordHash String
+  role         String   @default("client") // client | admin
+  createdAt    DateTime @default(now())
+
+  bookings      Booking[]
+  favorites     Artist[]       @relation("Favorites")
+  cards         Card[]
+  references    Reference[]
+  notifications Notification[]
+  reviews       Review[]
+}
+
+model Artist {
+  id              String   @id @default(cuid())
+  name            String
+  style           String
+  years           Int      @default(0)
+  bio             String   @default("")
+  available       Boolean  @default(true)
+  unavailableNote String   @default("")
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  services   Service[]     @relation("ArtistServices")
+  photos     ArtistPhoto[]
+  bookings   Booking[]
+  reviews    Review[]
+  favoredBy  User[]        @relation("Favorites")
+}
+
+model ArtistPhoto {
+  id        String   @id @default(cuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  mime      String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([artistId])
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  priceCents  Int
+  durationMin Int
+  icon        String   @default("pen")
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  artists  Artist[]  @relation("ArtistServices")
+  bookings Booking[]
+}
+
+model Booking {
+  id            String    @id @default(cuid())
+  clientId      String?
+  client        User?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientName    String
+  clientPhone   String    @default("")
+  artistId      String
+  artist        Artist    @relation(fields: [artistId], references: [id], onDelete: Restrict)
+  serviceId     String
+  service       Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  date          String // YYYY-MM-DD
+  time          String // HH:MM
+  durationMin   Int
+  priceCents    Int
+  depositCents  Int
+  status        String // requested | pending_deposit | confirmed | completed | cancelled | rejected
+  paymentMethod String    @default("studio") // card | pix | tap | studio
+  depositPaid   Boolean   @default(false)
+  notes         String    @default("")
+  cancelReason  String    @default("")
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  payments   Payment[]
+  review     Review?
+  references Reference[]
+
+  @@index([date])
+  @@index([artistId, date])
+  @@index([clientId])
+  @@index([status])
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  kind        String // deposit | final
+  method      String // card | pix | tap | cash | studio
+  amountCents Int
+  day         String // YYYY-MM-DD no fuso do estúdio
+  createdAt   DateTime @default(now())
+
+  @@index([day])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([artistId])
+}
+
+model Card {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand     String
+  last4     String
+  expiry    String // MM/AA
+  holder    String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Reference {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  note      String   @default("")
+  mime      String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String   @default("")
+  link      String   @default("")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Setting {
+  key   String @id
+  value String
+}

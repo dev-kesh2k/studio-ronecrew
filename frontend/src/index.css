@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  background: #0d0d0e;
+  color: #f2ece1;
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+@layer components {
+  .h1 {
+    @apply min-w-0 break-words font-display text-[clamp(1.85rem,8.5vw,2.5rem)] font-extrabold uppercase leading-[0.95] tracking-[0.01em] text-ink;
+  }
+  .h2 {
+    @apply font-display text-[clamp(1.35rem,6vw,1.6rem)] font-bold uppercase leading-none tracking-[0.01em] text-ink;
+  }
+  .card {
+    @apply min-w-0 rounded-[20px] border border-line bg-surface;
+  }
+  .btn-primary {
+    @apply flex min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-base font-bold text-bg transition active:scale-[0.98] disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border border-line2 bg-transparent px-5 text-base font-medium text-ink transition active:scale-[0.98] disabled:opacity-50;
+  }
+  .btn-danger {
+    @apply flex min-h-[52px] items-center justify-center gap-2 rounded-2xl border border-accent/40 bg-tint px-5 text-base font-semibold text-accent transition active:scale-[0.98] disabled:opacity-50;
+  }
+  .btn-pill {
+    @apply flex min-h-[48px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-accent px-5 text-base font-bold text-bg transition active:scale-95 disabled:opacity-50;
+  }
+  .icon-btn {
+    @apply relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition active:scale-95;
+  }
+  .input {
+    @apply min-h-[52px] w-full min-w-0 rounded-2xl border border-line bg-surface px-4 py-3 text-base text-ink outline-none transition placeholder:text-muted focus:border-accent;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-soft;
+  }
+  .chip {
+    @apply flex min-h-[44px] shrink-0 items-center justify-center whitespace-nowrap rounded-[22px] border border-line2 px-5 text-base font-medium text-ink transition active:scale-95;
+  }
+  .chip-on {
+    @apply border-accent bg-accent font-bold text-bg;
+  }
+  .stripes {
+    background-color: #202024;
+    background-image: repeating-linear-gradient(135deg, #202024 0 12px, #1a1a1d 12px 24px);
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
