@@ -50,7 +50,7 @@ export function PageHead({
           </button>
         )}
         <div className="min-w-0 flex-1">
-          {eyebrow && <p className="mb-1 text-sm font-bold uppercase tracking-[0.12em] text-accent">{eyebrow}</p>}
+          {eyebrow && <p className="mb-1 text-sm font-bold uppercase tracking-[0.12em] text-muted">{eyebrow}</p>}
           <h1 className="h1">{title}</h1>
         </div>
         {action}

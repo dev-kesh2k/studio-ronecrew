@@ -67,7 +67,21 @@ export interface GalleryPhoto {
   id: string;
   createdAt: string;
   artist: { id: string; name: string; style: string; available: boolean };
+  likes: number;
+  comments: number;
+  liked: boolean;
 }
+
+export interface PhotoComment {
+  id: string;
+  name: string;
+  avatar: string | null;
+  text: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+export const downloadUrl = (photoId: string) => `${API_BASE}/photos/${photoId}?download=1`;
 
 /** Carrega um recurso da API; `reload` busca de novo sem piscar a tela. */
 export function useApi<T>(path: string | null) {
@@ -111,10 +125,20 @@ export interface Config {
   phone: string;
   whatsapp: string;
   address: string;
+  hours: string;
+  about: string;
   instagram: string;
+  facebook: string;
+  tiktok: string;
+  youtube: string;
+  website: string;
+  googleReviewUrl: string;
   today: string;
   now: string;
 }
+
+/** Caminho relativo devolvido pela API (ex.: "client-avatars/<id>?v=2") → URL completa. */
+export const apiUrl = (rel: string | null | undefined) => (rel ? `${API_BASE}/${rel}` : undefined);
 
 export interface ServiceLite {
   id: string;

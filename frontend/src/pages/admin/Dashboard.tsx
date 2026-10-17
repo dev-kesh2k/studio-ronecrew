@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, CalendarCheck, Settings } from 'lucide-react';
+import { Bell, CalendarCheck, MessageSquareHeart, Settings } from 'lucide-react';
 import { useApi, type Booking } from '../../api';
-import { Empty, ErrorBox, Loading, PageHead } from '../../ui';
+import { Empty, ErrorBox, Loading } from '../../ui';
 import { brl, fmtLong, fmtShort } from '../../util';
 import { SessionRow, SessionSheet } from './parts';
 
@@ -18,6 +18,7 @@ interface Dash {
   depositsDueClients: number;
   upcoming: Booking[];
   unread: number;
+  feedbackUnread: number;
 }
 
 function Stat({ label, value, note, noteClass = 'text-muted', accent, to }: { label: string; value: string; note: string; noteClass?: string; accent?: boolean; to: string }) {
@@ -43,22 +44,30 @@ export default function Dashboard() {
 
   return (
     <div>
-      <PageHead
-        eyebrow="Administrador"
-        title={data.studioName}
-        subtitle={fmtLong(data.today)}
-        action={
-          <div className="flex gap-2 self-start">
+      {/* Botões na linha de cima: o nome do estúdio fica com a largura toda (não quebra no meio em 320 px). */}
+      <header className="mb-6">
+        <div className="flex items-center justify-between gap-3">
+          <p className="min-w-0 truncate text-[13px] font-bold uppercase tracking-[0.08em] text-muted min-[380px]:text-sm min-[380px]:tracking-[0.12em]">
+            <span className="min-[380px]:hidden">Admin</span>
+            <span className="hidden min-[380px]:inline">Administrador</span>
+          </p>
+          <div className="flex shrink-0 gap-1.5 min-[380px]:gap-2 [&>a]:h-11 [&>a]:w-11 min-[380px]:[&>a]:h-12 min-[380px]:[&>a]:w-12">
             <Link to="/admin/notificacoes" className="icon-btn" aria-label={data.unread ? `Notificações (${data.unread} novas)` : 'Notificações'}>
               <Bell size={22} />
               {data.unread > 0 && <span className="absolute right-2.5 top-2.5 h-3 w-3 rounded-full border-2 border-surface bg-accent" />}
+            </Link>
+            <Link to="/admin/feedback" className="icon-btn" aria-label={data.feedbackUnread ? `Feedback (${data.feedbackUnread} novos)` : 'Feedback dos clientes'}>
+              <MessageSquareHeart size={22} />
+              {data.feedbackUnread > 0 && <span className="absolute right-2.5 top-2.5 h-3 w-3 rounded-full border-2 border-surface bg-accent" />}
             </Link>
             <Link to="/admin/config" className="icon-btn md:hidden" aria-label="Configurações">
               <Settings size={22} />
             </Link>
           </div>
-        }
-      />
+        </div>
+        <h1 className="h1 mt-2">{data.studioName}</h1>
+        <p className="mt-3 text-base text-muted">{fmtLong(data.today)}</p>
+      </header>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat accent to="/admin/agenda" label="Sessões hoje" value={String(data.sessionsToday)} note={`${data.completedToday} já ${data.completedToday === 1 ? 'concluída' : 'concluídas'}`} />

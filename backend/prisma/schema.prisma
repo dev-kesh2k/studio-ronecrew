@@ -40,11 +40,11 @@ model Artist {
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
 
-  services   Service[]     @relation("ArtistServices")
-  photos     ArtistPhoto[]
-  bookings   Booking[]
-  reviews    Review[]
-  favoredBy  User[]        @relation("Favorites")
+  services  Service[]     @relation("ArtistServices")
+  photos    ArtistPhoto[]
+  bookings  Booking[]
+  reviews   Review[]
+  favoredBy User[]        @relation("Favorites")
 }
 
 model ArtistPhoto {
@@ -55,7 +55,67 @@ model ArtistPhoto {
   data      Bytes
   createdAt DateTime @default(now())
 
+  likes    PhotoLike[]
+  comments PhotoComment[]
+
   @@index([artistId])
+}
+
+// Curtida da galeria: uma por aparelho (voter = id aleatório salvo no navegador).
+model PhotoLike {
+  photoId   String
+  photo     ArtistPhoto @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  voter     String
+  createdAt DateTime    @default(now())
+
+  @@id([photoId, voter])
+}
+
+model PhotoComment {
+  id        String      @id @default(cuid())
+  photoId   String
+  photo     ArtistPhoto @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  phoneKey  String
+  name      String
+  text      String
+  createdAt DateTime    @default(now())
+
+  @@index([photoId, createdAt])
+}
+
+// Perfil do cliente (sem conta): identificado pelo celular. O id opaco vai nas URLs, nunca o número.
+model ClientProfile {
+  id            String   @id @default(cuid())
+  phoneKey      String   @unique
+  name          String   @default("")
+  avatar        Bytes?
+  avatarMime    String   @default("")
+  avatarVersion Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  kind      String // elogio | sugestao | reclamacao | outro
+  message   String
+  name      String   @default("")
+  phoneKey  String   @default("")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model WhatsAppLog {
+  id        String   @id @default(cuid())
+  to        String
+  event     String
+  text      String
+  status    String // sent | failed
+  error     String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model Service {
@@ -74,29 +134,30 @@ model Service {
 }
 
 model Booking {
-  id            String    @id @default(cuid())
-  clientId      String?
-  client        User?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  clientName    String
-  clientPhone   String    @default("")
-  phoneKey      String    @default("") // só dígitos, sem o 55: chave para o cliente ver os agendamentos
-  artistId      String
-  artist        Artist    @relation(fields: [artistId], references: [id], onDelete: Restrict)
-  serviceId     String
-  service       Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  date          String // YYYY-MM-DD
-  time          String // HH:MM
-  durationMin   Int
-  priceCents    Int
-  depositCents  Int
-  status        String // requested | pending_deposit | confirmed | completed | cancelled | rejected
-  paymentMethod String    @default("studio") // card | pix | tap | studio
-  depositPaid   Boolean   @default(false)
-  notes         String    @default("")
-  cancelReason  String    @default("")
-  completedAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  clientId       String?
+  client         User?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientName     String
+  clientPhone    String    @default("")
+  phoneKey       String    @default("") // só dígitos, sem o 55: chave para o cliente ver os agendamentos
+  artistId       String
+  artist         Artist    @relation(fields: [artistId], references: [id], onDelete: Restrict)
+  serviceId      String
+  service        Service   @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  date           String // YYYY-MM-DD
+  time           String // HH:MM
+  durationMin    Int
+  priceCents     Int
+  depositCents   Int
+  status         String // requested | pending_deposit | confirmed | completed | cancelled | rejected
+  paymentMethod  String    @default("studio") // card | pix | tap | studio
+  depositPaid    Boolean   @default(false)
+  notes          String    @default("")
+  cancelReason   String    @default("")
+  completedAt    DateTime?
+  reminderSentAt DateTime? // lembrete de véspera pelo WhatsApp
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   payments   Payment[]
   review     Review?
