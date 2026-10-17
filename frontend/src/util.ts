@@ -119,6 +119,30 @@ export function resizeImage(file: File, max = 1280): Promise<string> {
   });
 }
 
+/** Recorta o centro da imagem em quadrado (avatar), em JPEG. */
+export function squareImage(file: File, size = 512): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) return reject(new Error('Escolha uma imagem'));
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.width, img.height);
+      const out = Math.min(size, side);
+      const canvas = document.createElement('canvas');
+      canvas.width = out;
+      canvas.height = out;
+      canvas.getContext('2d')!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, out, out);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Não foi possível ler a imagem'));
+    };
+    img.src = url;
+  });
+}
+
 export const waLink = (phone: string, text = '') => {
   let d = phone.replace(/\D/g, '');
   if (d.length <= 11) d = `55${d}`;

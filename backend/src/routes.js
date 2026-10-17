@@ -64,6 +64,13 @@ api.get('/photos/:id', wrap(async (req, res) => {
   res.set('Content-Type', p.mime).set('Cache-Control', 'public, max-age=31536000, immutable').send(Buffer.from(p.data));
 }));
 
+// Avatar do artista (público; a URL leva ?v=<versão>, então pode ficar em cache para sempre).
+api.get('/artists/:id/avatar', wrap(async (req, res) => {
+  const a = await prisma.artist.findUnique({ where: { id: req.params.id }, select: { avatar: true, avatarMime: true } });
+  if (!a?.avatar || !a.avatarMime) throw new HttpError(404, 'Sem foto');
+  res.set('Content-Type', a.avatarMime).set('Cache-Control', 'public, max-age=31536000, immutable').send(Buffer.from(a.avatar));
+}));
+
 // ---------- Artistas e serviços (públicos) ----------
 api.get('/artists', wrap(async (req, res) => {
   const q = text(req.query.q, 'Busca', { max: 80 });
