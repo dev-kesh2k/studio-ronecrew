@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ImagePlus, Plus, Star, Trash2, Users } from 'lucide-react';
-import { api, photoUrl, useApi, type Artist, type Service } from '../../api';
+import { Camera, ImagePlus, Plus, Star, Trash2, Users } from 'lucide-react';
+import { api, avatarUrl, photoUrl, useApi, type Artist, type Service } from '../../api';
 import { Avatar, Checkbox, Empty, ErrorBox, Field, FormError, Loading, PageHead, Sheet, Switch, toast } from '../../ui';
-import { resizeImage } from '../../util';
+import { resizeImage, squareImage } from '../../util';
 
 type Form = { name: string; style: string; years: string; bio: string; available: boolean; unavailableNote: string; serviceIds: string[] };
 const blank: Form = { name: '', style: '', years: '0', bio: '', available: true, unavailableNote: '', serviceIds: [] };
@@ -14,6 +14,7 @@ export default function Team() {
   const [f, setF] = useState<Form>(blank);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   const current = editing && editing !== 'new' ? data?.artists.find((a) => a.id === editing.id) || editing : null;
 
@@ -91,6 +92,34 @@ export default function Team() {
     }
   }
 
+  async function setAvatar(file?: File) {
+    if (!file || !current) return;
+    setAvatarBusy(true);
+    try {
+      await api.post(`/admin/artists/${current.id}/avatar`, { image: await squareImage(file, 512) });
+      toast('Foto atualizada');
+      await reload();
+    } catch (e) {
+      toast((e as Error).message, true);
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  async function removeAvatar() {
+    if (!current || !confirm('Remover a foto? Voltam a aparecer as iniciais.')) return;
+    setAvatarBusy(true);
+    try {
+      await api.del(`/admin/artists/${current.id}/avatar`);
+      toast('Foto removida');
+      await reload();
+    } catch (e) {
+      toast((e as Error).message, true);
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
   async function delPhoto(id: string) {
     if (!confirm('Remover esta foto?')) return;
     try {
@@ -123,7 +152,7 @@ export default function Team() {
           <div key={a.id} className="card p-4 min-[380px]:p-5 sm:p-6">
             <div className="flex items-center gap-3 min-[380px]:gap-4">
               <div className={a.available ? '' : 'opacity-60'}>
-                <Avatar name={a.name} size="lg" />
+                <Avatar name={a.name} size="lg" src={avatarUrl(a)} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className={`text-lg font-bold ${a.available ? '' : 'text-soft'}`}>{a.name}</p>
@@ -151,6 +180,24 @@ export default function Team() {
 
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing === 'new' ? 'Novo artista' : 'Editar artista'}>
         <div className="grid gap-4">
+          {current ? (
+            <div className="flex items-center gap-4">
+              <Avatar name={current.name} size="lg" accent src={avatarUrl(current)} />
+              <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                <label className={`btn-secondary min-h-[44px] cursor-pointer px-4 text-sm ${avatarBusy ? 'pointer-events-none opacity-50' : ''}`}>
+                  <Camera size={18} /> {current.avatarVersion ? 'Trocar foto' : 'Adicionar foto'}
+                  <input type="file" accept="image/*" className="sr-only" aria-label="Foto do artista" onChange={(e) => setAvatar(e.target.files?.[0])} />
+                </label>
+                {current.avatarVersion && (
+                  <button type="button" className="min-h-[44px] px-2 text-sm font-bold text-accent" disabled={avatarBusy} onClick={removeAvatar}>
+                    Remover
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-2xl bg-surface2 px-4 py-3 text-sm text-muted">Salve o artista para adicionar a foto de avatar e o portfólio.</p>
+          )}
           <Field label="Nome">
             <input className="input" maxLength={80} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
           </Field>

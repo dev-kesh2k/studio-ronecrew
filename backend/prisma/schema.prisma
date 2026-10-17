@@ -33,6 +33,9 @@ model Artist {
   bio             String   @default("")
   available       Boolean  @default(true)
   unavailableNote String   @default("")
+  avatar          Bytes? // foto do artista (omitida por padrão nas consultas)
+  avatarMime      String   @default("")
+  avatarVersion   Int      @default(0) // muda a cada troca: invalida o cache da imagem
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
 

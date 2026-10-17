@@ -59,6 +59,10 @@ export async function fetchImageUrl(path: string): Promise<string> {
 
 export const photoUrl = (id: string) => `${API_BASE}/photos/${id}`;
 
+/** Foto do artista (ou undefined para mostrar as iniciais). */
+export const avatarUrl = (a: { id: string; avatarVersion: number | null }) =>
+  a.avatarVersion ? `${API_BASE}/artists/${a.id}/avatar?v=${a.avatarVersion}` : undefined;
+
 /** Carrega um recurso da API; `reload` busca de novo sem piscar a tela. */
 export function useApi<T>(path: string | null) {
   const [data, setData] = useState<T | null>(null);
@@ -123,6 +127,7 @@ export interface Artist {
   bio: string;
   available: boolean;
   unavailableNote: string;
+  avatarVersion: number | null;
   rating: number | null;
   reviewsCount: number;
   topRequested: boolean;

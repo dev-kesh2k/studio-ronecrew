@@ -135,6 +135,7 @@ export function serializeArtist(a, stats, favorites = new Set()) {
     bio: a.bio,
     available: a.available,
     unavailableNote: a.unavailableNote,
+    avatarVersion: a.avatarMime ? a.avatarVersion : null,
     rating: r ? Math.round(r.avg * 10) / 10 : null,
     reviewsCount: r ? r.count : 0,
     topRequested: stats.top === a.id,

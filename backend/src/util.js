@@ -16,7 +16,8 @@ function dbUrl() {
   }
 }
 
-export const prisma = new PrismaClient({ datasources: { db: { url: dbUrl() } } });
+// A foto do artista (bytes) só é lida pela rota da imagem: fica fora de todas as outras consultas.
+export const prisma = new PrismaClient({ datasources: { db: { url: dbUrl() } }, omit: { artist: { avatar: true } } });
 
 export class HttpError extends Error {
   constructor(status, message) {

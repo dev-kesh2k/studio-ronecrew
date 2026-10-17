@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Award, ChevronLeft, Heart, ImageOff, X } from 'lucide-react';
-import { photoUrl, useApi, type Artist } from '../../api';
+import { avatarUrl, photoUrl, useApi, type Artist } from '../../api';
 import { getFavorites, toggleFavorite } from '../../client';
 import { FullPage } from '../../layout';
 import { Avatar, ErrorBox, Loading, ServiceIcon, Stars, toast } from '../../ui';
@@ -68,7 +68,7 @@ export default function ArtistProfile() {
 
       <div className="relative -mt-10 flex items-end gap-4">
         <div className="rounded-full border-4 border-bg">
-          <Avatar name={a.name} size="lg" accent />
+          <Avatar name={a.name} size="lg" accent src={avatarUrl(a)} />
         </div>
       </div>
       <h1 className="h1 mt-3">{a.name}</h1>

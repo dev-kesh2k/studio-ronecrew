@@ -252,6 +252,22 @@ admin.post('/artists/:id/photos', wrap(async (req, res) => {
   res.status(201).json({ photo });
 }));
 
+admin.post('/artists/:id/avatar', wrap(async (req, res) => {
+  const { mime, data } = image(req.body.image);
+  if (data.length > 600_000) throw new HttpError(413, 'Foto muito grande (máx. 600 KB)');
+  const artist = await prisma.artist.update({
+    where: { id: req.params.id },
+    data: { avatar: data, avatarMime: mime, avatarVersion: { increment: 1 } },
+    select: { id: true, avatarVersion: true },
+  });
+  res.json({ avatarVersion: artist.avatarVersion });
+}));
+
+admin.delete('/artists/:id/avatar', wrap(async (req, res) => {
+  await prisma.artist.update({ where: { id: req.params.id }, data: { avatar: null, avatarMime: '' }, select: { id: true } });
+  res.json({ avatarVersion: null });
+}));
+
 admin.delete('/photos/:id', wrap(async (req, res) => {
   await prisma.artistPhoto.delete({ where: { id: req.params.id } });
   res.json({ ok: true });

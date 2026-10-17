@@ -93,11 +93,17 @@ export function Switch({
 }
 
 // ---------- Avatar ----------
-export function Avatar({ name, size = 'md', accent }: { name: string; size?: 'sm' | 'md' | 'lg'; accent?: boolean }) {
+/** Foto do artista quando houver; senão (ou se a imagem falhar), as iniciais. */
+export function Avatar({ name, size = 'md', accent, src }: { name: string; size?: 'sm' | 'md' | 'lg'; accent?: boolean; src?: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
   const s =
     size === 'lg'
       ? `h-14 w-14 text-lg min-[380px]:h-[72px] min-[380px]:w-[72px] min-[380px]:text-2xl ${accent ? 'rounded-full' : 'rounded-2xl min-[380px]:rounded-[20px]'}`
       : size === 'sm' ? 'h-11 w-11 text-sm rounded-xl' : 'h-14 w-14 text-lg rounded-2xl';
+  if (src && !failed) return <img src={src} alt={name} onError={() => setFailed(true)} className={`shrink-0 bg-surface2 object-cover ${s}`} />;
   return (
     <div className={`flex shrink-0 items-center justify-center font-bold ${s} ${accent ? 'bg-accent text-bg' : 'bg-surface2 text-ink'}`}>
       {initials(name)}

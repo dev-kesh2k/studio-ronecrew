@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ChevronRight, Star } from 'lucide-react';
-import type { Artist, Booking } from '../../api';
+import { avatarUrl, type Artist, type Booking } from '../../api';
 import { Avatar, StatusPill } from '../../ui';
 import { dayNum, duration, monthShort, WEEKDAYS_SHORT, weekdayOf } from '../../util';
 
@@ -18,7 +18,7 @@ export function RatingText({ artist }: { artist: Artist }) {
 export function ArtistCard({ artist }: { artist: Artist }) {
   return (
     <Link to={`/artistas/${artist.id}`} className="card flex items-center gap-3 p-4 transition active:scale-[0.99] min-[380px]:gap-4 min-[380px]:p-5">
-      <Avatar name={artist.name} size="lg" />
+      <Avatar name={artist.name} size="lg" src={avatarUrl(artist)} />
       <div className="min-w-0 flex-1">
         <p className="break-words text-lg font-bold leading-snug">{artist.name}</p>
         <p className="break-words text-base text-muted">
