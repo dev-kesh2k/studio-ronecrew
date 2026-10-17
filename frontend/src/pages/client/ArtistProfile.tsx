@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Award, ChevronLeft, Heart, ImageOff, X } from 'lucide-react';
-import { api, photoUrl, useApi, type Artist } from '../../api';
+import { photoUrl, useApi, type Artist } from '../../api';
+import { getFavorites, toggleFavorite } from '../../client';
 import { FullPage } from '../../layout';
 import { Avatar, ErrorBox, Loading, ServiceIcon, Stars, toast } from '../../ui';
 import { duration, fmtDate, priceFrom } from '../../util';
@@ -12,15 +13,15 @@ interface Review {
   rating: number;
   comment: string;
   createdAt: string;
-  user: { name: string };
+  name: string;
 }
 
 export default function ArtistProfile() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { data, error, loading, reload, setData } = useApi<{ artist: Artist; reviews: Review[] }>(`/artists/${id}`);
+  const { data, error, loading, reload } = useApi<{ artist: Artist; reviews: Review[] }>(`/artists/${id}`);
   const [zoom, setZoom] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [fav, setFav] = useState(() => getFavorites().includes(id || ''));
 
   if (loading && !data) return <Loading />;
   if (error || !data)
@@ -32,17 +33,10 @@ export default function ArtistProfile() {
 
   const a = data.artist;
 
-  async function toggleFav() {
-    setBusy(true);
-    try {
-      const r = a.favorite ? await api.del<{ favorite: boolean }>(`/artists/${a.id}/favorite`) : await api.post<{ favorite: boolean }>(`/artists/${a.id}/favorite`);
-      setData({ ...data!, artist: { ...a, favorite: r.favorite } });
-      toast(r.favorite ? 'Adicionado aos favoritos' : 'Removido dos favoritos');
-    } catch (e) {
-      toast((e as Error).message, true);
-    } finally {
-      setBusy(false);
-    }
+  function toggleFav() {
+    const on = toggleFavorite(a.id);
+    setFav(on);
+    toast(on ? 'Adicionado aos favoritos' : 'Removido dos favoritos');
   }
 
   const footer = a.available ? (
@@ -66,8 +60,8 @@ export default function ArtistProfile() {
           <button className="icon-btn bg-bg/80" aria-label="Voltar" onClick={() => nav(-1)}>
             <ChevronLeft size={24} />
           </button>
-          <button className="icon-btn bg-bg/80" aria-label={a.favorite ? 'Remover dos favoritos' : 'Favoritar'} aria-pressed={a.favorite} onClick={toggleFav} disabled={busy}>
-            <Heart size={22} className={a.favorite ? 'text-accent' : ''} fill={a.favorite ? 'currentColor' : 'none'} />
+          <button className="icon-btn bg-bg/80" aria-label={fav ? 'Remover dos favoritos' : 'Favoritar'} aria-pressed={fav} onClick={toggleFav}>
+            <Heart size={22} className={fav ? 'text-accent' : ''} fill={fav ? 'currentColor' : 'none'} />
           </button>
         </div>
       </div>
@@ -140,7 +134,7 @@ export default function ArtistProfile() {
             {data.reviews.map((r) => (
               <div key={r.id} className="card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-bold">{r.user.name}</p>
+                  <p className="font-bold">{r.name}</p>
                   <Stars value={r.rating} />
                 </div>
                 {r.comment && <p className="mt-2 text-soft">{r.comment}</p>}

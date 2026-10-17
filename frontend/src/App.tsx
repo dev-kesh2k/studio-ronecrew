@@ -1,11 +1,11 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth';
+import { introSeen } from './client';
 import { ADMIN_TABS, CLIENT_TABS, TabsLayout } from './layout';
 import { Loading, Toaster } from './ui';
 import Welcome from './pages/auth/Welcome';
-import { Login, Register } from './pages/auth/Login';
-import Forgot from './pages/auth/Forgot';
+import AdminLogin from './pages/auth/Login';
 import Home from './pages/client/Home';
 import Artists from './pages/client/Artists';
 import ArtistProfile from './pages/client/ArtistProfile';
@@ -16,9 +16,7 @@ import BookingDetail from './pages/client/BookingDetail';
 import Profile from './pages/client/Profile';
 import PersonalInfo from './pages/client/PersonalInfo';
 import Favorites from './pages/client/Favorites';
-import References from './pages/client/References';
 import Aftercare from './pages/client/Aftercare';
-import PaymentMethods from './pages/client/PaymentMethods';
 import Help from './pages/client/Help';
 import Notifications from './pages/Notifications';
 import Dashboard from './pages/admin/Dashboard';
@@ -36,81 +34,61 @@ function ScrollTop() {
   return null;
 }
 
-function RequireRole({ role, children }: { role: 'client' | 'admin'; children: ReactNode }) {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== role) return <Navigate to={user.role === 'admin' ? '/admin' : '/'} replace />;
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { user, ready } = useAuth();
+  if (!ready) return <Loading />;
+  if (user?.role !== 'admin') return <Navigate to="/admin/login" replace />;
   return <>{children}</>;
 }
 
-export default function App() {
-  const { user, ready } = useAuth();
-  if (!ready) return <Loading />;
+/** Apresentação só na primeira visita; depois vai direto para o início. */
+function HomeOrIntro() {
+  const [seen, setSeen] = useState(introSeen);
+  return seen ? <Home /> : <Welcome onDone={() => setSeen(true)} />;
+}
 
+export default function App() {
   return (
     <>
       <ScrollTop />
       <Toaster />
       <Routes>
-        {!user ? (
-          <>
-            <Route path="/" element={<Welcome />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/cadastro" element={<Register />} />
-            <Route path="/esqueci" element={<Forgot />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </>
-        ) : (
-          <>
-            <Route path="/login" element={<Navigate to={user.role === 'admin' ? '/admin' : '/'} replace />} />
-            <Route path="/cadastro" element={<Navigate to="/" replace />} />
+        {/* Cliente: sem login, identificado pelo celular no agendamento */}
+        <Route element={<TabsLayout tabs={CLIENT_TABS} />}>
+          <Route path="/" element={<HomeOrIntro />} />
+          <Route path="/agenda" element={<Bookings />} />
+          <Route path="/agenda/:id" element={<BookingDetail />} />
+          <Route path="/artistas" element={<Artists />} />
+          <Route path="/perfil" element={<Profile />} />
+          <Route path="/perfil/favoritos" element={<Favorites />} />
+          <Route path="/perfil/cuidados" element={<Aftercare />} />
+          <Route path="/perfil/ajuda" element={<Help />} />
+        </Route>
+        <Route path="/artistas/:id" element={<ArtistProfile />} />
+        <Route path="/agendar/servico" element={<BookService />} />
+        <Route path="/agendar/data" element={<BookDate />} />
+        <Route path="/agendar/pagamento" element={<BookPayment />} />
 
-            {/* Cliente */}
-            <Route
-              element={
-                <RequireRole role="client">
-                  <TabsLayout tabs={CLIENT_TABS} />
-                </RequireRole>
-              }
-            >
-              <Route path="/" element={<Home />} />
-              <Route path="/agenda" element={<Bookings />} />
-              <Route path="/agenda/:id" element={<BookingDetail />} />
-              <Route path="/artistas" element={<Artists />} />
-              <Route path="/perfil" element={<Profile />} />
-              <Route path="/perfil/dados" element={<PersonalInfo />} />
-              <Route path="/perfil/favoritos" element={<Favorites />} />
-              <Route path="/perfil/referencias" element={<References />} />
-              <Route path="/perfil/cuidados" element={<Aftercare />} />
-              <Route path="/perfil/pagamento" element={<PaymentMethods />} />
-              <Route path="/perfil/ajuda" element={<Help />} />
-              <Route path="/notificacoes" element={<Notifications />} />
-            </Route>
-            <Route path="/artistas/:id" element={<RequireRole role="client"><ArtistProfile /></RequireRole>} />
-            <Route path="/agendar/servico" element={<RequireRole role="client"><BookService /></RequireRole>} />
-            <Route path="/agendar/data" element={<RequireRole role="client"><BookDate /></RequireRole>} />
-            <Route path="/agendar/pagamento" element={<RequireRole role="client"><BookPayment /></RequireRole>} />
-
-            {/* Administrador */}
-            <Route
-              element={
-                <RequireRole role="admin">
-                  <TabsLayout tabs={ADMIN_TABS} admin />
-                </RequireRole>
-              }
-            >
-              <Route path="/admin" element={<Dashboard />} />
-              <Route path="/admin/agenda" element={<Agenda />} />
-              <Route path="/admin/equipe" element={<Team />} />
-              <Route path="/admin/servicos" element={<Services />} />
-              <Route path="/admin/financeiro" element={<Finance />} />
-              <Route path="/admin/config" element={<Settings />} />
-              <Route path="/admin/conta" element={<PersonalInfo />} />
-              <Route path="/admin/notificacoes" element={<Notifications />} />
-            </Route>
-            <Route path="*" element={<Navigate to={user.role === 'admin' ? '/admin' : '/'} replace />} />
-          </>
-        )}
+        {/* Estúdio: login obrigatório */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          element={
+            <RequireAdmin>
+              <TabsLayout tabs={ADMIN_TABS} admin />
+            </RequireAdmin>
+          }
+        >
+          <Route path="/admin" element={<Dashboard />} />
+          <Route path="/admin/agenda" element={<Agenda />} />
+          <Route path="/admin/equipe" element={<Team />} />
+          <Route path="/admin/servicos" element={<Services />} />
+          <Route path="/admin/financeiro" element={<Finance />} />
+          <Route path="/admin/config" element={<Settings />} />
+          <Route path="/admin/conta" element={<PersonalInfo />} />
+          <Route path="/admin/notificacoes" element={<Notifications />} />
+        </Route>
+        <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

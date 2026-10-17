@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarPlus, History, XCircle } from 'lucide-react';
 import { useApi, type Booking } from '../../api';
+import { useSavedPhone } from '../../client';
+import PhoneGate from './PhoneGate';
 import { Empty, ErrorBox, Loading, PageHead } from '../../ui';
 import { BookingCard } from './parts';
 
@@ -16,7 +18,16 @@ const ACTIVE = ['requested', 'pending_deposit', 'confirmed'];
 
 export default function Bookings() {
   const [tab, setTab] = useState<TabId>('next');
-  const { data, error, loading, reload } = useApi<{ bookings: Booking[]; today: string }>('/bookings/mine');
+  const [phone, setPhone] = useSavedPhone();
+  const { data, error, loading, reload } = useApi<{ bookings: Booking[]; today: string }>(phone ? `/bookings/by-phone?phone=${encodeURIComponent(phone)}` : null);
+
+  if (!phone)
+    return (
+      <div>
+        <PageHead title="Meus agendamentos" />
+        <PhoneGate onSubmit={setPhone} />
+      </div>
+    );
 
   const groups: Record<TabId, Booking[]> = { next: [], past: [], cancel: [] };
   for (const b of data?.bookings || []) {
@@ -31,6 +42,14 @@ export default function Bookings() {
     <div>
       <PageHead
         title="Meus agendamentos"
+        subtitle={
+          <span className="flex flex-wrap items-center gap-x-3">
+            Celular {phone}
+            <button className="min-h-[44px] font-bold text-accent" onClick={() => setPhone('')}>
+              Trocar número
+            </button>
+          </span>
+        }
         action={
           <Link to="/artistas" className="btn-pill" aria-label="Novo agendamento">
             <CalendarPlus size={20} /> <span className="hidden min-[380px]:inline">Novo</span>
@@ -58,7 +77,7 @@ export default function Bookings() {
         <Empty
           icon={tab === 'next' ? CalendarPlus : tab === 'past' ? History : XCircle}
           title={tab === 'next' ? 'Nenhum agendamento' : tab === 'past' ? 'Nenhuma sessão anterior' : 'Nada cancelado'}
-          text={tab === 'next' ? 'Escolha um artista e marque sua próxima tattoo.' : undefined}
+          text={tab === 'next' ? 'Nenhum agendamento com esse celular. Escolha um artista e marque sua próxima tattoo.' : undefined}
           action={
             tab === 'next' ? (
               <Link to="/artistas" className="btn-primary w-full">

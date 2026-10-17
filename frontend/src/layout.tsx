@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { BarChart3, CalendarDays, Home, LayoutGrid, LogOut, Settings, Tag, User, Users, type LucideIcon } from 'lucide-react';
+import { BarChart3, CalendarDays, Home, LayoutGrid, Lock, LogOut, Settings, Tag, User, Users, type LucideIcon } from 'lucide-react';
 import { useAuth } from './auth';
 
 type Tab = { to: string; label: string; icon: LucideIcon; end?: boolean };
@@ -61,19 +61,25 @@ export function TabsLayout({ tabs, admin }: { tabs: Tab[]; admin?: boolean }) {
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-1">
-          {admin && (
-            <NavLink
-              to="/admin/config"
-              className={({ isActive }) =>
-                `flex min-h-[48px] items-center gap-3 rounded-2xl px-4 text-base font-medium ${isActive ? 'bg-tint2 text-accent' : 'text-soft hover:bg-surface'}`
-              }
-            >
-              <Settings size={22} /> Configurações
+          {admin ? (
+            <>
+              <NavLink
+                to="/admin/config"
+                className={({ isActive }) =>
+                  `flex min-h-[48px] items-center gap-3 rounded-2xl px-4 text-base font-medium ${isActive ? 'bg-tint2 text-accent' : 'text-soft hover:bg-surface'}`
+                }
+              >
+                <Settings size={22} /> Configurações
+              </NavLink>
+              <button onClick={signOut} className="flex min-h-[48px] items-center gap-3 rounded-2xl px-4 text-base font-medium text-accent hover:bg-surface">
+                <LogOut size={22} /> Sair
+              </button>
+            </>
+          ) : (
+            <NavLink to="/admin" className="flex min-h-[44px] items-center gap-3 rounded-2xl px-4 text-sm text-muted hover:bg-surface">
+              <Lock size={18} /> Área do estúdio
             </NavLink>
           )}
-          <button onClick={signOut} className="flex min-h-[48px] items-center gap-3 rounded-2xl px-4 text-base font-medium text-accent hover:bg-surface">
-            <LogOut size={22} /> Sair
-          </button>
         </div>
       </aside>
 
