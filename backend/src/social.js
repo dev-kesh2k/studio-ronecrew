@@ -83,7 +83,7 @@ social.get('/gallery', wrap(async (req, res) => {
   const artistId = text(req.query.artistId, 'Artista', { max: 40 });
   const voter = /^[A-Za-z0-9-]{8,64}$/.test(String(req.query.voter || '')) ? String(req.query.voter) : '';
   const photos = await prisma.artistPhoto.findMany({
-    where: { artist: { archived: false }, ...(artistId ? { artistId } : {}) },
+    where: { status: 'APPROVED', artist: { archived: false }, ...(artistId ? { artistId } : {}) },
     select: {
       id: true,
       createdAt: true,
@@ -97,6 +97,25 @@ social.get('/gallery', wrap(async (req, res) => {
   res.json({
     photos: photos.map(({ _count, likes, ...p }) => ({ ...p, likes: _count.likes, comments: _count.comments, liked: !!likes?.length })),
   });
+}));
+
+// Upload de fotos pendentes de aprovação (cliente)
+social.post('/gallery/upload', wrap(async (req, res) => {
+  limitLookup(`upload:${req.ip}`, 20);
+  const artistId = text(req.body.artistId, 'Artista', { max: 40 });
+  const name = text(req.body.name, 'Seu nome', { max: 60 });
+  const { mime, data } = image(req.body.image);
+  if (data.length > 3_000_000) throw new HttpError(413, 'Foto muito grande (máx. 3 MB)');
+
+  const artist = await prisma.artist.findUnique({ where: { id: artistId }, select: { id: true, name: true } });
+  if (!artist) throw new HttpError(404, 'Artista não encontrado');
+
+  const photo = await prisma.artistPhoto.create({
+    data: { artistId, mime, data, status: 'PENDING', uploadedBy: name }
+  });
+
+  await notifyAdmins('📸 Nova foto aguardando aprovação', `${name} enviou uma foto para ${artist.name}`, '/admin/feedback?tab=fotos');
+  res.status(201).json({ photoId: photo.id, ok: true });
 }));
 
 social.post('/gallery/:id/like', wrap(async (req, res) => {
@@ -152,5 +171,58 @@ social.delete('/gallery/comments/:id', wrap(async (req, res) => {
   const key = req.body?.phone || req.query.phone ? mobile(req.body?.phone ?? req.query.phone).key : '';
   if (c.phoneKey !== key && !(await isAdminRequest(req))) throw new HttpError(403, 'Só quem escreveu (ou o estúdio) pode apagar');
   await prisma.photoComment.delete({ where: { id: c.id } });
+  res.json({ ok: true });
+}));
+
+// ---------- Admin: Aprovação de fotos ----------
+// Listar fotos pendentes
+social.get('/admin/gallery/pending', wrap(async (req, res) => {
+  if (!(await isAdminRequest(req))) throw new HttpError(403, 'Acesso negado');
+  const photos = await prisma.artistPhoto.findMany({
+    where: { status: 'PENDING' },
+    include: { artist: { select: { id: true, name: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json({
+    photos: photos.map(({ data, ...p }) => ({ ...p, mime: p.mime })),
+  });
+}));
+
+// Ver uma foto pendente (com dados)
+social.get('/admin/gallery/:id', wrap(async (req, res) => {
+  if (!(await isAdminRequest(req))) throw new HttpError(403, 'Acesso negado');
+  const photo = await prisma.artistPhoto.findUnique({
+    where: { id: req.params.id },
+    include: { artist: { select: { id: true, name: true } } },
+  });
+  if (!photo) throw new HttpError(404, 'Foto não encontrada');
+  res.set('Content-Type', photo.mime).set('Cache-Control', 'public, max-age=3600').send(Buffer.from(photo.data));
+}));
+
+// Aprovar foto
+social.post('/admin/gallery/:id/approve', wrap(async (req, res) => {
+  if (!(await isAdminRequest(req))) throw new HttpError(403, 'Acesso negado');
+  const photo = await prisma.artistPhoto.findUnique({
+    where: { id: req.params.id },
+    include: { artist: { select: { name: true } } },
+  });
+  if (!photo) throw new HttpError(404, 'Foto não encontrada');
+  if (photo.status !== 'PENDING') throw new HttpError(400, 'Foto já foi processada');
+
+  await prisma.artistPhoto.update({ where: { id: photo.id }, data: { status: 'APPROVED' } });
+  res.json({ ok: true });
+}));
+
+// Rejeitar foto
+social.post('/admin/gallery/:id/reject', wrap(async (req, res) => {
+  if (!(await isAdminRequest(req))) throw new HttpError(403, 'Acesso negado');
+  const photo = await prisma.artistPhoto.findUnique({
+    where: { id: req.params.id },
+    include: { artist: { select: { name: true } } },
+  });
+  if (!photo) throw new HttpError(404, 'Foto não encontrada');
+  if (photo.status !== 'PENDING') throw new HttpError(400, 'Foto já foi processada');
+
+  await prisma.artistPhoto.delete({ where: { id: photo.id } });
   res.json({ ok: true });
 }));

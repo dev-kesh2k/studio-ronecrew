@@ -285,7 +285,7 @@ admin.post('/artists/:id/photos', wrap(async (req, res) => {
   const { mime, data } = image(req.body.image);
   if (!(await prisma.artist.findUnique({ where: { id: req.params.id }, select: { id: true } }))) throw new HttpError(404, 'Artista não encontrado');
   if ((await prisma.artistPhoto.count({ where: { artistId: req.params.id } })) >= 30) throw new HttpError(400, 'Limite de 30 fotos no portfólio');
-  const photo = await prisma.artistPhoto.create({ data: { artistId: req.params.id, mime, data }, select: { id: true } });
+  const photo = await prisma.artistPhoto.create({ data: { artistId: req.params.id, mime, data, status: 'APPROVED' }, select: { id: true } });
   res.status(201).json({ photo });
 }));
 
