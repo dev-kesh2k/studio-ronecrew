@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CreditCard, ImagePlus, Info, QrCode, Smartphone, Store, Trash2 } from 'lucide-react';
-import { api, useApi, type Booking, type Card } from '../../api';
+import { api, type Booking } from '../../api';
+import { getSavedName, getSavedPhone, isValidPhone, maskPhone, saveClient } from '../../client';
 import { useConfig } from '../../config';
 import { FullPage } from '../../layout';
-import { Checkbox, ErrorBox, Field, FormError, Loading, PageHead, Radio, Stepper } from '../../ui';
+import { ErrorBox, Field, FormError, Loading, PageHead, Radio, Stepper } from '../../ui';
 import { brl, duration, fmtDate, priceFrom, resizeImage, WEEKDAYS_SHORT, weekdayOf } from '../../util';
 import { useArtist } from './BookingFlow';
 
@@ -17,15 +18,21 @@ const METHODS: { id: Method; label: string; hint: string; icon: typeof CreditCar
   { id: 'studio', label: 'Pagar no estúdio', hint: 'Sem sinal agora · sujeito à aprovação', icon: Store },
 ];
 
-function formatCardNumber(v: string) {
-  return v.replace(/\D/g, '').slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 ');
+interface CardForm {
+  number: string;
+  holder: string;
+  expiry: string;
+  cvv: string;
 }
+const emptyCard: CardForm = { number: '', holder: '', expiry: '', cvv: '' };
+
+const formatCardNumber = (v: string) => v.replace(/\D/g, '').slice(0, 19).replace(/(\d{4})(?=\d)/g, '$1 ');
 function formatExpiry(v: string) {
   const d = v.replace(/\D/g, '').slice(0, 4);
   return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
 }
 
-export function NewCardFields({ card, setCard }: { card: NewCard; setCard: (c: NewCard) => void }) {
+function CardFields({ card, setCard }: { card: CardForm; setCard: (c: CardForm) => void }) {
   return (
     <div className="grid gap-3">
       <Field label="Número do cartão">
@@ -46,15 +53,6 @@ export function NewCardFields({ card, setCard }: { card: NewCard; setCard: (c: N
   );
 }
 
-export interface NewCard {
-  number: string;
-  holder: string;
-  expiry: string;
-  cvv: string;
-  save?: boolean;
-}
-export const emptyCard: NewCard = { number: '', holder: '', expiry: '', cvv: '', save: true };
-
 export default function BookPayment() {
   const [params] = useSearchParams();
   const nav = useNavigate();
@@ -64,11 +62,12 @@ export default function BookPayment() {
   const date = params.get('date') || '';
   const time = params.get('time') || '';
   const artist = useArtist(artistId);
-  const cards = useApi<{ cards: Card[] }>('/cards');
 
-  const [method, setMethod] = useState<Method>('card');
-  const [cardId, setCardId] = useState<string>('');
-  const [newCard, setNewCard] = useState<NewCard>(emptyCard);
+  const [phone, setPhone] = useState(getSavedPhone);
+  const [name, setName] = useState(getSavedName);
+  const [phoneErr, setPhoneErr] = useState('');
+  const [method, setMethod] = useState<Method>('pix');
+  const [card, setCard] = useState<CardForm>(emptyCard);
   const [notes, setNotes] = useState('');
   const [ref, setRef] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -77,13 +76,6 @@ export default function BookPayment() {
   useEffect(() => {
     if (!artistId || !serviceId || !date || !time) nav('/artistas', { replace: true });
   }, [artistId, serviceId, date, time, nav]);
-
-  useEffect(() => {
-    if (cards.data && !cardId) {
-      const def = cards.data.cards.find((c) => c.isDefault) || cards.data.cards[0];
-      setCardId(def ? def.id : 'new');
-    }
-  }, [cards.data, cardId]);
 
   if (!config || (artist.loading && !artist.data)) return <Loading />;
   if (artist.error || !artist.data) return <FullPage><ErrorBox message={artist.error || 'Artista não encontrado'} /></FullPage>;
@@ -104,17 +96,21 @@ export default function BookPayment() {
   }
 
   async function submit() {
-    setBusy(true);
     setError('');
+    if (!isValidPhone(phone)) {
+      setPhoneErr('Informe o celular com DDD, ex.: (11) 91234-5678');
+      document.getElementById('celular')?.focus();
+      return;
+    }
+    setPhoneErr('');
+    setBusy(true);
     try {
-      const body: Record<string, unknown> = { artistId, serviceId, date, time, notes, paymentMethod: free ? 'studio' : method };
-      if (!free && method === 'card') {
-        if (cardId && cardId !== 'new') body.cardId = cardId;
-        else body.newCard = newCard;
-      }
+      const body: Record<string, unknown> = { artistId, serviceId, date, time, notes, clientName: name, clientPhone: phone, paymentMethod: free ? 'studio' : method };
+      if (!free && method === 'card') body.card = card;
       const r = await api.post<{ booking: Booking }>('/bookings', body);
+      saveClient(phone, name);
       if (ref) {
-        await api.post('/references', { image: ref, note: notes.slice(0, 300), bookingId: r.booking.id }).catch(() => undefined);
+        await api.post(`/bookings/${r.booking.id}/references`, { image: ref, note: notes.slice(0, 300), phone }).catch(() => undefined);
       }
       nav(`/agenda/${r.booking.id}?novo=1`, { replace: true });
     } catch (e) {
@@ -166,6 +162,33 @@ export default function BookPayment() {
           )}
 
           <section>
+            <h2 className="h2 mb-3">Seus dados</h2>
+            <div className="grid gap-4">
+              <Field label="Celular (WhatsApp) *" hint="Obrigatório. É por ele que você vê seus agendamentos.">
+                <input
+                  id="celular"
+                  className={`input ${phoneErr ? 'border-accent' : ''}`}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="(11) 91234-5678"
+                  required
+                  aria-invalid={!!phoneErr}
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(maskPhone(e.target.value));
+                    setPhoneErr('');
+                  }}
+                />
+              </Field>
+              {phoneErr && <FormError message={phoneErr} />}
+              <Field label="Nome (opcional)">
+                <input className="input" autoComplete="name" maxLength={100} placeholder="Como o estúdio te chama" value={name} onChange={(e) => setName(e.target.value)} />
+              </Field>
+            </div>
+          </section>
+
+          <section>
             <h2 className="h2 mb-3">Detalhes</h2>
             <Field label="Conte sua ideia (opcional)">
               <textarea className="input min-h-[110px] resize-y" maxLength={1000} placeholder="Ex.: rosa fine line no antebraço, uns 10 cm" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -209,39 +232,14 @@ export default function BookPayment() {
                     </button>
                     {on && m.id === 'card' && (
                       <div className="border-t border-line p-4">
-                        {cards.loading && !cards.data && <Loading />}
-                        <div className="flex flex-col gap-2">
-                          {cards.data?.cards.map((c) => (
-                            <button key={c.id} onClick={() => setCardId(c.id)} className="flex min-h-[52px] items-center gap-3 rounded-2xl bg-surface2 px-4 text-left">
-                              <Radio on={cardId === c.id} />
-                              <span className="min-w-0 flex-1 truncate font-medium">
-                                {c.brand} •••• {c.last4}
-                              </span>
-                              <span className="text-sm text-muted">{c.expiry}</span>
-                            </button>
-                          ))}
-                          <button onClick={() => setCardId('new')} className="flex min-h-[52px] items-center gap-3 rounded-2xl bg-surface2 px-4 text-left">
-                            <Radio on={cardId === 'new'} />
-                            <span className="font-medium">Novo cartão</span>
-                          </button>
-                        </div>
-                        {cardId === 'new' && (
-                          <div className="mt-4">
-                            <NewCardFields card={newCard} setCard={setNewCard} />
-                            <button className="mt-3 flex min-h-[44px] items-center gap-3 text-left text-soft" onClick={() => setNewCard({ ...newCard, save: !newCard.save })}>
-                              <Checkbox on={!!newCard.save} /> Salvar cartão para as próximas vezes
-                            </button>
-                          </div>
-                        )}
+                        <CardFields card={card} setCard={setCard} />
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
-            <p className="mt-4 text-sm text-muted">
-              Pagamento simulado: o sinal fica registrado no estúdio, sem cobrança real. Guardamos só a bandeira e os 4 últimos dígitos do cartão.
-            </p>
+            <p className="mt-4 text-sm text-muted">Pagamento simulado: o sinal fica registrado no estúdio, sem cobrança real. Os dados do cartão não são guardados.</p>
           </section>
         )}
       </div>

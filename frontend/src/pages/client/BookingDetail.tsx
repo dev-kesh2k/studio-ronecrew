@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, ImagePlus, Star } from 'lucide-react';
-import { api, fetchImageUrl, useApi, type Booking } from '../../api';
+import { api, API_BASE, fetchImageUrl, useApi, type Booking } from '../../api';
+import { useSavedPhone } from '../../client';
+import PhoneGate from './PhoneGate';
 import { useConfig } from '../../config';
 import { ErrorBox, Field, FormError, Loading, PageHead, Sheet, Stars, StatusPill, toast } from '../../ui';
 import { brl, duration, fmtDate, METHOD, priceFrom, resizeImage, WEEKDAYS_SHORT, weekdayOf } from '../../util';
 
-export function RefThumb({ id }: { id: string }) {
-  const [url, setUrl] = useState('');
+/** Miniatura da referência: o cliente acessa pelo celular; o estúdio, pelo token. */
+export function RefThumb({ id, phone }: { id: string; phone?: string }) {
+  const [url, setUrl] = useState(phone ? `${API_BASE}/references/${id}/image?phone=${encodeURIComponent(phone)}` : '');
   useEffect(() => {
+    if (phone) return;
     let u = '';
     fetchImageUrl(`/references/${id}/image`)
       .then((x) => setUrl((u = x)))
@@ -16,7 +20,7 @@ export function RefThumb({ id }: { id: string }) {
     return () => {
       if (u) URL.revokeObjectURL(u);
     };
-  }, [id]);
+  }, [id, phone]);
   return (
     <a href={url || undefined} target="_blank" rel="noreferrer" className="block aspect-square overflow-hidden rounded-[14px] bg-surface2">
       {url && <img src={url} alt="Referência" className="h-full w-full object-cover" />}
@@ -28,7 +32,8 @@ export default function BookingDetail() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const config = useConfig();
-  const { data, error, loading, reload } = useApi<{ booking: Booking }>(`/bookings/${id}`);
+  const [phone, setPhone] = useSavedPhone();
+  const { data, error, loading, reload } = useApi<{ booking: Booking }>(phone ? `/bookings/${id}?phone=${encodeURIComponent(phone)}` : null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -37,8 +42,24 @@ export default function BookingDetail() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
+  if (!phone)
+    return (
+      <div className="mx-auto max-w-2xl">
+        <PageHead back="/agenda" title="Agendamento" />
+        <PhoneGate onSubmit={setPhone} text="Informe o celular usado neste agendamento." />
+      </div>
+    );
   if (loading && !data) return <Loading />;
-  if (error || !data) return <ErrorBox message={error || 'Agendamento não encontrado'} onRetry={reload} />;
+  if (error || !data)
+    return (
+      <div className="mx-auto max-w-2xl">
+        <PageHead back="/agenda" title="Agendamento" />
+        <ErrorBox message={error || 'Agendamento não encontrado'} onRetry={reload} />
+        <button className="btn-secondary mt-4 w-full" onClick={() => setPhone('')}>
+          Usar outro celular
+        </button>
+      </div>
+    );
   const b = data.booking;
   const today = config?.today || '';
   const active = ['requested', 'pending_deposit', 'confirmed'].includes(b.status);
@@ -64,7 +85,7 @@ export default function BookingDetail() {
     if (!file) return;
     try {
       const image = await resizeImage(file);
-      await api.post('/references', { image, bookingId: b.id });
+      await api.post(`/bookings/${b.id}/references`, { image, phone });
       toast('Referência adicionada');
       reload();
     } catch (e) {
@@ -82,7 +103,7 @@ export default function BookingDetail() {
           <div>
             <p className="font-bold text-ok">{b.status === 'requested' ? 'Solicitação enviada!' : 'Agendamento confirmado!'}</p>
             <p className="text-sm text-soft">
-              {b.status === 'requested' ? 'O estúdio vai aprovar o horário e você recebe a resposta nas notificações.' : 'Te esperamos no estúdio. Chegue 10 minutos antes.'}
+              {b.status === 'requested' ? 'O estúdio vai aprovar o horário. Acompanhe a resposta aqui em Agenda, com o seu celular.' : 'Te esperamos no estúdio. Chegue 10 minutos antes.'}
             </p>
           </div>
         </div>
@@ -125,7 +146,7 @@ export default function BookingDetail() {
         <h2 className="h2 mb-3">Referências</h2>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {b.references?.map((r) => (
-            <RefThumb key={r.id} id={r.id} />
+            <RefThumb key={r.id} id={r.id} phone={phone} />
           ))}
           {active && (
             <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-[14px] border border-dashed border-line2 text-sm text-muted">
@@ -172,7 +193,7 @@ export default function BookingDetail() {
           <button className="btn-secondary" onClick={() => setCancelOpen(false)}>
             Voltar
           </button>
-          <button className="btn-primary" disabled={busy} onClick={() => run(() => api.post(`/bookings/${b.id}/cancel`, { reason }), 'Agendamento cancelado', () => setCancelOpen(false))}>
+          <button className="btn-primary" disabled={busy} onClick={() => run(() => api.post(`/bookings/${b.id}/cancel`, { reason, phone }), 'Agendamento cancelado', () => setCancelOpen(false))}>
             Cancelar
           </button>
         </div>
@@ -192,7 +213,7 @@ export default function BookingDetail() {
         <div className="mt-4">
           <FormError message={err} />
         </div>
-        <button className="btn-primary mt-4 w-full" disabled={busy} onClick={() => run(() => api.post(`/bookings/${b.id}/review`, { rating, comment }), 'Obrigado pela avaliação!', () => setReviewOpen(false))}>
+        <button className="btn-primary mt-4 w-full" disabled={busy} onClick={() => run(() => api.post(`/bookings/${b.id}/review`, { rating, comment, phone }), 'Obrigado pela avaliação!', () => setReviewOpen(false))}>
           Enviar avaliação
         </button>
       </Sheet>

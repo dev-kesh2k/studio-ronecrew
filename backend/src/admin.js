@@ -1,5 +1,4 @@
 import express from 'express';
-import bcrypt from 'bcryptjs';
 import {
   prisma,
   HttpError,
@@ -14,19 +13,15 @@ import {
   monthRange,
   toMin,
   text,
-  email,
   phone,
+  mobile,
   int,
   oneOf,
   image,
   getSettings,
   SETTING_DEFAULTS,
-  notify,
-  randomPassword,
   ACTIVE_STATUSES,
   BLOCKING_STATUSES,
-  brl,
-  shortDate,
 } from './util.js';
 import { checkBookable, createBooking, bookingInclude, serializeBooking, paidCents, artistInclude, artistStats, serializeArtist } from './booking.js';
 
@@ -97,20 +92,17 @@ admin.get('/requests', wrap(async (_req, res) => {
 admin.post('/bookings', wrap(async (req, res) => {
   const { artist, service } = await checkBookable(req.body);
   const clientName = text(req.body.clientName, 'Nome do cliente', { required: true, max: 100 });
-  const clientPhone = phone(req.body.clientPhone);
-  const clientEmail = req.body.clientEmail ? email(req.body.clientEmail) : '';
+  const { raw: clientPhone, key } = mobile(req.body.clientPhone);
   const notes = text(req.body.notes, 'Observações', { max: 1000 });
-  const client = clientEmail ? await prisma.user.findUnique({ where: { email: clientEmail } }) : null;
-  if (clientEmail && !client) throw new HttpError(404, 'Nenhum cliente cadastrado com esse e-mail');
   const settings = await getSettings();
   const deposit = Math.min(settings.depositCents, service.priceCents);
   const received = deposit > 0 && !!req.body.depositReceived;
   const method = received ? oneOf(req.body.depositMethod || 'cash', 'Forma de pagamento', PAY_METHODS) : 'studio';
   const booking = await createBooking(
     {
-      clientId: client?.id || null,
-      clientName: client?.name || clientName,
-      clientPhone: clientPhone || client?.phone || '',
+      clientName,
+      clientPhone,
+      phoneKey: key,
       artistId: artist.id,
       serviceId: service.id,
       date: req.body.date,
@@ -125,9 +117,6 @@ admin.post('/bookings', wrap(async (req, res) => {
     },
     received ? [{ kind: 'deposit', method, amountCents: deposit }] : [],
   );
-  if (client) {
-    await notify([client.id], 'Nova sessão agendada pelo estúdio', `${service.name} com ${artist.name} · ${shortDate(booking.date)}, ${booking.time}`, `/agenda/${booking.id}`);
-  }
   const full = await prisma.booking.findUnique({ where: { id: booking.id }, include: bookingInclude });
   res.status(201).json({ booking: serializeBooking(full) });
 }));
@@ -137,14 +126,12 @@ async function loadBooking(id) {
   if (!b) throw new HttpError(404, 'Agendamento não encontrado');
   return b;
 }
-const label = (b) => `${b.service.name} com ${b.artist.name} · ${shortDate(b.date)}, ${b.time}`;
 
 admin.post('/bookings/:id/approve', wrap(async (req, res) => {
   const b = await loadBooking(req.params.id);
   if (b.status !== 'requested') throw new HttpError(400, 'Essa solicitação já foi respondida');
   const status = b.depositPaid || b.depositCents === 0 ? 'confirmed' : 'pending_deposit';
   await prisma.booking.update({ where: { id: b.id }, data: { status } });
-  await notify([b.clientId], 'Agendamento aprovado', `${label(b)}${status === 'pending_deposit' ? ` · pague o sinal de ${brl(b.depositCents)} no estúdio` : ''}`, `/agenda/${b.id}`);
   res.json({ status });
 }));
 
@@ -153,7 +140,6 @@ admin.post('/bookings/:id/reject', wrap(async (req, res) => {
   if (b.status !== 'requested') throw new HttpError(400, 'Essa solicitação já foi respondida');
   const reason = text(req.body.reason, 'Motivo', { max: 300 });
   await prisma.booking.update({ where: { id: b.id }, data: { status: 'rejected', cancelReason: reason || 'Horário indisponível' } });
-  await notify([b.clientId], 'Solicitação recusada', `${label(b)}${reason ? ` · ${reason}` : ''}`, `/agenda/${b.id}`);
   res.json({ status: 'rejected' });
 }));
 
@@ -165,7 +151,6 @@ admin.post('/bookings/:id/deposit', wrap(async (req, res) => {
     prisma.booking.update({ where: { id: b.id }, data: { status: 'confirmed', depositPaid: true } }),
     prisma.payment.create({ data: { bookingId: b.id, kind: 'deposit', method, amountCents: b.depositCents, day: todayStr() } }),
   ]);
-  await notify([b.clientId], 'Sinal recebido · sessão confirmada', label(b), `/agenda/${b.id}`);
   res.json({ status: 'confirmed' });
 }));
 
@@ -179,7 +164,6 @@ admin.post('/bookings/:id/complete', wrap(async (req, res) => {
     prisma.booking.update({ where: { id: b.id }, data: { status: 'completed', completedAt: new Date() } }),
     ...(amount > 0 ? [prisma.payment.create({ data: { bookingId: b.id, kind: 'final', method, amountCents: amount, day: todayStr() } })] : []),
   ]);
-  await notify([b.clientId], 'Sessão concluída', `${b.service.name} com ${b.artist.name}. Conte como foi: avalie a sessão.`, `/agenda/${b.id}`);
   res.json({ status: 'completed', paidCents: paidCents(b) + amount });
 }));
 
@@ -188,7 +172,6 @@ admin.post('/bookings/:id/cancel', wrap(async (req, res) => {
   if (!ACTIVE_STATUSES.includes(b.status)) throw new HttpError(400, 'Esse agendamento não pode ser cancelado');
   const reason = text(req.body.reason, 'Motivo', { max: 300 });
   await prisma.booking.update({ where: { id: b.id }, data: { status: 'cancelled', cancelReason: reason || 'Cancelado pelo estúdio' } });
-  await notify([b.clientId], 'Agendamento cancelado pelo estúdio', `${label(b)}${reason ? ` · ${reason}` : ''}`, `/agenda/${b.id}`);
   res.json({ status: 'cancelled' });
 }));
 
@@ -400,14 +383,4 @@ admin.put('/settings', wrap(async (req, res) => {
     ),
   );
   res.json({ settings: await getSettings() });
-}));
-
-admin.post('/users/reset-password', wrap(async (req, res) => {
-  const mail = email(req.body.email);
-  const user = await prisma.user.findUnique({ where: { email: mail } });
-  if (!user) throw new HttpError(404, 'Nenhuma conta com esse e-mail');
-  if (user.id === req.user.id) throw new HttpError(400, 'Para trocar a sua senha use "Alterar senha"');
-  const temp = randomPassword();
-  await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(temp, 10) } });
-  res.json({ name: user.name, password: temp });
 }));

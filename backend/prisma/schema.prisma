@@ -75,6 +75,7 @@ model Booking {
   client        User?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
   clientName    String
   clientPhone   String    @default("")
+  phoneKey      String    @default("") // só dígitos, sem o 55: chave para o cliente ver os agendamentos
   artistId      String
   artist        Artist    @relation(fields: [artistId], references: [id], onDelete: Restrict)
   serviceId     String
@@ -100,6 +101,7 @@ model Booking {
   @@index([date])
   @@index([artistId, date])
   @@index([clientId])
+  @@index([phoneKey])
   @@index([status])
 }
 
@@ -120,8 +122,8 @@ model Review {
   id        String   @id @default(cuid())
   bookingId String   @unique
   booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   artistId  String
   artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
   rating    Int
@@ -147,8 +149,8 @@ model Card {
 
 model Reference {
   id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   bookingId String?
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   note      String   @default("")

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { api, useApi, type Artist, type Booking, type Slot } from '../../api';
+import { isValidPhone, maskPhone } from '../../client';
 import { useConfig } from '../../config';
 import { Checkbox, Field, FormError, Sheet, StatusPill, toast } from '../../ui';
 import { brl, duration, firstName, fmtDate, fmtShort, METHOD, moneyInput, parseMoney, STATUS, waLink } from '../../util';
@@ -233,7 +234,7 @@ export function SessionSheet({ booking, onClose, onChanged, today }: { booking: 
 export function NewBookingSheet({ open, onClose, onCreated, defaultDate }: { open: boolean; onClose: () => void; onCreated: (b: Booking) => void; defaultDate: string }) {
   const config = useConfig();
   const artists = useApi<{ artists: Artist[] }>(open ? '/admin/artists' : null);
-  const [f, setF] = useState({ clientName: '', clientPhone: '', clientEmail: '', artistId: '', serviceId: '', date: defaultDate, time: '', notes: '', depositReceived: false, depositMethod: 'pix' });
+  const [f, setF] = useState({ clientName: '', clientPhone: '', artistId: '', serviceId: '', date: defaultDate, time: '', notes: '', depositReceived: false, depositMethod: 'pix' });
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -265,7 +266,7 @@ export function NewBookingSheet({ open, onClose, onCreated, defaultDate }: { ope
     try {
       const r = await api.post<{ booking: Booking }>('/admin/bookings', f);
       toast('Agendamento criado');
-      setF({ ...f, clientName: '', clientPhone: '', clientEmail: '', time: '', notes: '', depositReceived: false });
+      setF({ ...f, clientName: '', clientPhone: '', time: '', notes: '', depositReceived: false });
       onCreated(r.booking);
       onClose();
     } catch (e) {
@@ -283,14 +284,9 @@ export function NewBookingSheet({ open, onClose, onCreated, defaultDate }: { ope
         <Field label="Nome do cliente">
           <input className="input" value={f.clientName} onChange={(e) => setF({ ...f, clientName: e.target.value })} maxLength={100} />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Telefone">
-            <input className="input" type="tel" inputMode="tel" value={f.clientPhone} onChange={(e) => setF({ ...f, clientPhone: e.target.value })} />
-          </Field>
-          <Field label="E-mail da conta (opcional)" hint="Vincula ao app do cliente">
-            <input className="input" type="email" inputMode="email" value={f.clientEmail} onChange={(e) => setF({ ...f, clientEmail: e.target.value })} />
-          </Field>
-        </div>
+        <Field label="Celular *" hint="O cliente vê este agendamento no app com esse número">
+          <input className="input" type="tel" inputMode="tel" placeholder="(11) 91234-5678" value={f.clientPhone} onChange={(e) => setF({ ...f, clientPhone: maskPhone(e.target.value) })} />
+        </Field>
         <Field label="Artista">
           <select className="input" value={f.artistId} onChange={(e) => setF({ ...f, artistId: e.target.value, serviceId: '', time: '' })}>
             <option value="">Selecione</option>
@@ -349,7 +345,7 @@ export function NewBookingSheet({ open, onClose, onCreated, defaultDate }: { ope
           <textarea className="input min-h-[80px]" maxLength={1000} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
         </Field>
         <FormError message={err} />
-        <button className="btn-primary" disabled={busy || !f.clientName || !f.time} onClick={submit}>
+        <button className="btn-primary" disabled={busy || !f.clientName || !isValidPhone(f.clientPhone) || !f.time} onClick={submit}>
           {busy ? 'Salvando…' : 'Agendar'}
         </button>
       </div>

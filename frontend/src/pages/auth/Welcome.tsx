@@ -1,18 +1,21 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import { CalendarCheck, Droplet, Users } from 'lucide-react';
+import { markIntroSeen } from '../../client';
 
 const SLIDES = [
   { icon: Droplet, title: 'Agende sua tattoo com tranquilidade', text: 'Escolha artista, serviço, data e horário em poucos toques.' },
   { icon: Users, title: 'Encontre o artista do seu estilo', text: 'Fine line, blackwork, realismo, aquarela: veja portfólio e avaliações.' },
-  { icon: CalendarCheck, title: 'Pague o sinal e acompanhe tudo', text: 'O sinal é descontado do valor final e sua sessão fica confirmada.' },
+  { icon: CalendarCheck, title: 'Sem cadastro, só o celular', text: 'Informe seu celular no agendamento e acompanhe suas sessões por ele.' },
 ];
 
-export default function Welcome() {
+export default function Welcome({ onDone }: { onDone: () => void }) {
   const [i, setI] = useState(0);
-  const nav = useNavigate();
   const s = SLIDES[i];
   const last = i === SLIDES.length - 1;
+  const done = () => {
+    markIntroSeen();
+    onDone();
+  };
 
   return (
     <div className="stripes flex min-h-[100dvh] flex-col">
@@ -48,12 +51,12 @@ export default function Welcome() {
             </button>
           ))}
         </div>
-        <button className="btn-primary w-full" onClick={() => (last ? nav('/cadastro') : setI(i + 1))}>
+        <button className="btn-primary w-full" onClick={() => (last ? done() : setI(i + 1))}>
           {last ? 'Começar' : 'Continuar'}
         </button>
-        <Link to="/login" className="mt-3 flex min-h-[48px] items-center justify-center text-base text-soft">
-          Já tenho conta · <span className="ml-1 font-bold text-accent">Entrar</span>
-        </Link>
+        <button onClick={done} className="mt-3 flex min-h-[48px] w-full items-center justify-center text-base text-soft">
+          Pular
+        </button>
       </div>
     </div>
   );

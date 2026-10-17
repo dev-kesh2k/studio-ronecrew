@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, KeyRound, LogOut, User } from 'lucide-react';
+import { ChevronRight, LogOut, User } from 'lucide-react';
 import { api, useApi } from '../../api';
 import { useAuth } from '../../auth';
 import { reloadConfig } from '../../config';
@@ -22,9 +22,6 @@ export default function Settings() {
   const [f, setF] = useState<(Omit<S, 'depositCents'> & { deposit: string }) | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [resetErr, setResetErr] = useState('');
-  const [temp, setTemp] = useState<{ name: string; password: string } | null>(null);
 
   useEffect(() => {
     if (data) {
@@ -50,18 +47,6 @@ export default function Settings() {
       setErr((e2 as Error).message);
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function reset(e: FormEvent) {
-    e.preventDefault();
-    setResetErr('');
-    setTemp(null);
-    if (!confirm(`Gerar uma nova senha para ${resetEmail}? A senha atual deixa de funcionar.`)) return;
-    try {
-      setTemp(await api.post<{ name: string; password: string }>('/admin/users/reset-password', { email: resetEmail }));
-    } catch (e2) {
-      setResetErr((e2 as Error).message);
     }
   }
 
@@ -110,24 +95,6 @@ export default function Settings() {
           </button>
         </form>
       )}
-
-      <form onSubmit={reset} className="card mt-6 grid gap-4 p-5">
-        <h2 className="h2">Redefinir senha de cliente</h2>
-        <p className="text-sm text-muted">Para quem esqueceu a senha: gera uma senha temporária para você passar ao cliente.</p>
-        <Field label="E-mail da conta">
-          <input className="input" type="email" inputMode="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} required />
-        </Field>
-        <FormError message={resetErr} />
-        {temp && (
-          <div className="rounded-2xl bg-okbg p-4">
-            <p className="text-sm text-soft">Nova senha de {temp.name}:</p>
-            <p className="mt-1 select-all break-all font-mono text-lg font-bold text-ok">{temp.password}</p>
-          </div>
-        )}
-        <button className="btn-secondary">
-          <KeyRound size={20} /> Gerar senha temporária
-        </button>
-      </form>
 
       <button onClick={signOut} className="card mt-6 flex min-h-[64px] w-full items-center gap-4 px-5 text-lg text-accent">
         <LogOut size={22} /> Sair

@@ -1,22 +1,19 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, CalendarDays, ChevronRight, Search } from 'lucide-react';
+import { CalendarDays, ChevronRight, Search } from 'lucide-react';
 import { useApi, type Artist, type Booking } from '../../api';
-import { useAuth } from '../../auth';
+import { getSavedName, getSavedPhone } from '../../client';
 import { ErrorBox, Loading } from '../../ui';
 import { firstName, fmtShort } from '../../util';
 import { ArtistCard } from './parts';
 
 export default function Home() {
-  const { user, unread, refresh } = useAuth();
   const nav = useNavigate();
   const [q, setQ] = useState('');
+  const phone = getSavedPhone();
+  const name = getSavedName();
   const artists = useApi<{ artists: Artist[]; styles: string[] }>('/artists');
-  const mine = useApi<{ bookings: Booking[]; today: string }>('/bookings/mine');
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const mine = useApi<{ bookings: Booking[]; today: string }>(phone ? `/bookings/by-phone?phone=${encodeURIComponent(phone)}` : null);
 
   const next = mine.data?.bookings
     .filter((b) => ['requested', 'pending_deposit', 'confirmed'].includes(b.status) && b.date >= mine.data!.today)
@@ -36,12 +33,11 @@ export default function Home() {
     <div>
       <header className="mb-6 flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-base text-muted">Olá, {firstName(user?.name || '')}</p>
+          <p className="text-base text-muted">{name ? `Olá, ${firstName(name)}` : 'Olá!'}</p>
           <h1 className="h1 mt-1">Bora tatuar?</h1>
         </div>
-        <Link to="/notificacoes" className="icon-btn" aria-label={unread ? `Notificações (${unread} novas)` : 'Notificações'}>
-          <Bell size={22} />
-          {unread > 0 && <span className="absolute right-2.5 top-2.5 h-3 w-3 rounded-full border-2 border-surface bg-accent" />}
+        <Link to="/agenda" className="icon-btn" aria-label="Meus agendamentos">
+          <CalendarDays size={22} />
         </Link>
       </header>
 

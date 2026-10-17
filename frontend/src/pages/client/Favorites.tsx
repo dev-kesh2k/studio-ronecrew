@@ -1,17 +1,20 @@
 import { Link } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { useApi, type Artist } from '../../api';
+import { getFavorites } from '../../client';
 import { Empty, ErrorBox, Loading, PageHead } from '../../ui';
 import { ArtistCard } from './parts';
 
 export default function Favorites() {
-  const { data, error, loading, reload } = useApi<{ artists: Artist[] }>('/artists?favorites=1');
+  const { data, error, loading, reload } = useApi<{ artists: Artist[] }>('/artists');
+  const favs = getFavorites();
+  const list = (data?.artists || []).filter((a) => favs.includes(a.id));
   return (
     <div>
-      <PageHead back="/perfil" title="Artistas favoritos" />
+      <PageHead back="/perfil" title="Artistas favoritos" subtitle="Salvos neste aparelho." />
       {loading && !data && <Loading />}
       {error && <ErrorBox message={error} onRetry={reload} />}
-      {data && data.artists.length === 0 && (
+      {data && list.length === 0 && (
         <Empty
           icon={Heart}
           title="Nenhum favorito ainda"
@@ -24,7 +27,7 @@ export default function Favorites() {
         />
       )}
       <div className="grid gap-3 lg:grid-cols-2">
-        {data?.artists.map((a) => (
+        {list.map((a) => (
           <ArtistCard key={a.id} artist={a} />
         ))}
       </div>

@@ -80,6 +80,19 @@ const KEY = SECRET || crypto.randomBytes(32).toString('hex');
 
 export const signToken = (user) => jwt.sign({ sub: user.id }, KEY, { expiresIn: '30d' });
 
+/** true se o header Authorization traz o token de um administrador. */
+export async function isAdminRequest(req) {
+  const h = req.headers.authorization || '';
+  if (!h.startsWith('Bearer ')) return false;
+  try {
+    const { sub } = jwt.verify(h.slice(7), KEY);
+    const u = await prisma.user.findUnique({ where: { id: sub }, select: { role: true } });
+    return u?.role === 'admin';
+  } catch {
+    return false;
+  }
+}
+
 export function publicUser(u) {
   const { passwordHash, ...rest } = u;
   return rest;
@@ -151,6 +164,34 @@ export function phone(v, { required = false } = {}) {
   return s;
 }
 
+/** Celular normalizado (DDD + número, sem o 55): chave para o cliente encontrar seus agendamentos. */
+export function phoneKey(v) {
+  let d = digits(v);
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) d = d.slice(2);
+  return d;
+}
+
+export function mobile(v) {
+  const raw = text(v, 'Celular', { required: true, max: 30 });
+  const key = phoneKey(raw);
+  if (key.length < 10 || key.length > 11) throw new HttpError(400, 'Informe o celular com DDD (ex.: 11 91234-5678)');
+  return { raw, key };
+}
+
+/** Formata a chave para exibição: (11) 91234-5678 */
+export const formatPhone = (key) =>
+  key.length === 11 ? `(${key.slice(0, 2)}) ${key.slice(2, 7)}-${key.slice(7)}` : key.length === 10 ? `(${key.slice(0, 2)}) ${key.slice(2, 6)}-${key.slice(6)}` : key;
+
+// Limite por IP para consultas pelo celular (evita varredura de números).
+const lookups = new Map();
+export function limitLookup(ip, max = 60) {
+  const now = Date.now();
+  const list = (lookups.get(ip) || []).filter((t) => now - t < WINDOW);
+  if (list.length >= max) throw new HttpError(429, 'Muitas consultas. Aguarde alguns minutos.');
+  list.push(now);
+  lookups.set(ip, list);
+}
+
 export function int(v, field, { min = 0, max = 1_000_000_000 } = {}) {
   const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
   if (typeof n !== 'number' || !Number.isInteger(n)) throw new HttpError(400, `${field} inválido`);
@@ -173,10 +214,6 @@ export function image(v) {
   return { mime: m[1], data };
 }
 
-export const randomPassword = () => {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  return Array.from(crypto.randomBytes(10), (b) => alphabet[b % alphabet.length]).join('') + '#7';
-};
 
 // ---------- Configurações do estúdio ----------
 export const SETTING_DEFAULTS = {
