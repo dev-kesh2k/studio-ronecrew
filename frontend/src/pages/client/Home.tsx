@@ -152,24 +152,22 @@ export default function Home() {
       )}
 
       {config && (
-        <section className="card mt-8 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-display text-2xl font-bold uppercase text-accent">{config.studioName}</p>
-              {config.address && (
-                <p className="mt-1 flex items-start gap-1.5 text-sm text-muted">
-                  <MapPin size={16} className="mt-0.5 shrink-0" /> <span className="break-words">{config.address}</span>
-                </p>
-              )}
-            </div>
-            <Link to="/sobre" className="btn-secondary min-h-[44px] px-4 text-sm">
-              Sobre e localização
-            </Link>
-          </div>
+        <section className="card mt-8 p-6 text-center">
+          <p className="font-display text-3xl font-bold uppercase leading-none text-accent">{config.studioName}</p>
+          {config.address && (
+            <p className="mx-auto mt-3 flex max-w-xs items-start justify-center gap-1.5 text-sm text-muted">
+              <MapPin size={16} className="mt-0.5 shrink-0" /> <span className="break-words">{config.address}</span>
+            </p>
+          )}
+          <Link to="/sobre" className="btn-secondary mt-5 w-full">
+            Sobre e localização
+          </Link>
           {socialLinks(config).length > 0 && (
-            <div className="mt-4 border-t border-line pt-4">
-              <p className="mb-2 text-sm text-muted">Siga o estúdio</p>
-              <Social config={config} compact />
+            <div className="mt-5 border-t border-line pt-5">
+              <p className="mb-3 text-sm text-muted">Siga o estúdio</p>
+              <div className="flex justify-center">
+                <Social config={config} compact />
+              </div>
             </div>
           )}
         </section>
