@@ -75,20 +75,20 @@ api.get('/artists/:id/avatar', wrap(async (req, res) => {
 api.get('/artists', wrap(async (req, res) => {
   const q = text(req.query.q, 'Busca', { max: 80 });
   const style = text(req.query.style, 'Estilo', { max: 80 });
-  const where = {};
+  const where = { archived: false };
   if (q) where.OR = [{ name: { contains: q, mode: 'insensitive' } }, { style: { contains: q, mode: 'insensitive' } }];
   if (style) where.style = { equals: style, mode: 'insensitive' };
   const [artists, stats, styles] = await Promise.all([
     prisma.artist.findMany({ where, include: artistInclude(true), orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
     artistStats(),
-    prisma.artist.findMany({ distinct: ['style'], select: { style: true }, orderBy: { sortOrder: 'asc' } }),
+    prisma.artist.findMany({ where: { archived: false }, distinct: ['style'], select: { style: true }, orderBy: { sortOrder: 'asc' } }),
   ]);
   res.json({ artists: artists.map((a) => serializeArtist(a, stats)), styles: styles.map((s) => s.style) });
 }));
 
 api.get('/artists/:id', wrap(async (req, res) => {
   const [a, stats] = await Promise.all([prisma.artist.findUnique({ where: { id: req.params.id }, include: artistInclude(true) }), artistStats()]);
-  if (!a) throw new HttpError(404, 'Artista não encontrado');
+  if (!a || a.archived) throw new HttpError(404, 'Artista não encontrado');
   const reviews = await prisma.review.findMany({
     where: { artistId: a.id },
     orderBy: { createdAt: 'desc' },
@@ -99,6 +99,18 @@ api.get('/artists/:id', wrap(async (req, res) => {
     artist: serializeArtist(a, stats),
     reviews: reviews.map(({ booking, ...r }) => ({ ...r, name: (booking?.clientName || 'Cliente').split(/\s+/)[0] })),
   });
+}));
+
+// Galeria: trabalhos de todos os artistas da equipe (mais recentes primeiro).
+api.get('/gallery', wrap(async (req, res) => {
+  const artistId = text(req.query.artistId, 'Artista', { max: 40 });
+  const photos = await prisma.artistPhoto.findMany({
+    where: { artist: { archived: false }, ...(artistId ? { artistId } : {}) },
+    select: { id: true, createdAt: true, artist: { select: { id: true, name: true, style: true, available: true } } },
+    orderBy: { createdAt: 'desc' },
+    take: 300,
+  });
+  res.json({ photos });
 }));
 
 api.get('/services', wrap(async (req, res) => {

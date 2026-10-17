@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronRight, Search } from 'lucide-react';
-import { useApi, type Artist, type Booking } from '../../api';
+import { photoUrl, useApi, type Artist, type Booking, type GalleryPhoto } from '../../api';
 import { getSavedName, getSavedPhone } from '../../client';
 import { ErrorBox, Loading } from '../../ui';
 import { firstName, fmtShort } from '../../util';
@@ -13,6 +13,7 @@ export default function Home() {
   const phone = getSavedPhone();
   const name = getSavedName();
   const artists = useApi<{ artists: Artist[]; styles: string[] }>('/artists');
+  const gallery = useApi<{ photos: GalleryPhoto[] }>('/gallery');
   const mine = useApi<{ bookings: Booking[]; today: string }>(phone ? `/bookings/by-phone?phone=${encodeURIComponent(phone)}` : null);
 
   const next = mine.data?.bookings
@@ -99,6 +100,24 @@ export default function Home() {
             {artists.data.styles.slice(0, 4).map((s) => (
               <Link key={s} to={`/artistas?style=${encodeURIComponent(s)}`} className="stripes flex aspect-[4/3] items-end rounded-[18px] border border-line p-4 transition active:scale-[0.98]">
                 <span className="font-display text-2xl font-bold uppercase leading-none">{s}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {gallery.data && gallery.data.photos.length > 0 && (
+        <section className="mt-8">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="h2">Galeria</h2>
+            <Link to="/galeria" className="flex min-h-[44px] items-center text-base text-accent">
+              Ver tudo
+            </Link>
+          </div>
+          <div className="grid grid-cols-3 gap-2 md:grid-cols-6 md:gap-3">
+            {gallery.data.photos.slice(0, 6).map((p) => (
+              <Link key={p.id} to={`/galeria?artist=${p.artist.id}`} className="aspect-square overflow-hidden rounded-[14px] bg-surface2" aria-label={`Trabalho de ${p.artist.name}`}>
+                <img src={photoUrl(p.id)} alt="" loading="lazy" className="h-full w-full object-cover" />
               </Link>
             ))}
           </div>

@@ -36,6 +36,7 @@ model Artist {
   avatar          Bytes? // foto do artista (omitida por padrão nas consultas)
   avatarMime      String   @default("")
   avatarVersion   Int      @default(0) // muda a cada troca: invalida o cache da imagem
+  archived        Boolean  @default(false) // excluído da equipe, mas mantido pelo histórico de agendamentos
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
 

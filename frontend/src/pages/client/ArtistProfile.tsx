@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Award, ChevronLeft, Heart, ImageOff, X } from 'lucide-react';
+import { Award, ChevronLeft, Heart, ImageOff } from 'lucide-react';
 import { avatarUrl, photoUrl, useApi, type Artist } from '../../api';
 import { getFavorites, toggleFavorite } from '../../client';
 import { FullPage } from '../../layout';
-import { Avatar, ErrorBox, Loading, ServiceIcon, Stars, toast } from '../../ui';
+import { Avatar, ErrorBox, Lightbox, Loading, ServiceIcon, Stars, toast } from '../../ui';
 import { duration, fmtDate, priceFrom } from '../../util';
 import { RatingText } from './parts';
 
@@ -20,7 +20,7 @@ export default function ArtistProfile() {
   const { id } = useParams();
   const nav = useNavigate();
   const { data, error, loading, reload } = useApi<{ artist: Artist; reviews: Review[] }>(`/artists/${id}`);
-  const [zoom, setZoom] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<number | null>(null);
   const [fav, setFav] = useState(() => getFavorites().includes(id || ''));
 
   if (loading && !data) return <Loading />;
@@ -87,11 +87,18 @@ export default function ArtistProfile() {
       </div>
 
       <section className="mt-7">
-        <h2 className="h2 mb-3">Portfólio</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="h2">Portfólio</h2>
+          {a.photos.length > 8 && (
+            <Link to={`/galeria?artist=${a.id}`} className="flex min-h-[44px] items-center text-base text-accent">
+              Ver todas ({a.photos.length})
+            </Link>
+          )}
+        </div>
         {a.photos.length ? (
           <div className="grid grid-cols-4 gap-2 md:gap-3">
-            {a.photos.slice(0, 8).map((p) => (
-              <button key={p} onClick={() => setZoom(p)} className="aspect-square overflow-hidden rounded-[14px] bg-surface2" aria-label="Ampliar foto">
+            {a.photos.slice(0, 8).map((p, i) => (
+              <button key={p} onClick={() => setZoom(i)} className="aspect-square overflow-hidden rounded-[14px] bg-surface2" aria-label="Ampliar foto">
                 <img src={photoUrl(p)} alt="" loading="lazy" className="h-full w-full object-cover" />
               </button>
             ))}
@@ -145,14 +152,7 @@ export default function ArtistProfile() {
         </section>
       )}
 
-      {zoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" role="dialog" aria-modal="true" onClick={() => setZoom(null)}>
-          <button className="icon-btn absolute right-4 top-[max(1rem,env(safe-area-inset-top))]" aria-label="Fechar">
-            <X size={22} />
-          </button>
-          <img src={photoUrl(zoom)} alt="" className="max-h-[85dvh] max-w-full rounded-2xl object-contain" />
-        </div>
-      )}
+      {zoom !== null && <Lightbox urls={a.photos.map(photoUrl)} index={zoom} onIndex={setZoom} onClose={() => setZoom(null)} />}
     </FullPage>
   );
 }

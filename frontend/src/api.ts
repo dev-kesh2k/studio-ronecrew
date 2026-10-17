@@ -59,9 +59,15 @@ export async function fetchImageUrl(path: string): Promise<string> {
 
 export const photoUrl = (id: string) => `${API_BASE}/photos/${id}`;
 
-/** Foto do artista (ou undefined para mostrar as iniciais). */
-export const avatarUrl = (a: { id: string; avatarVersion: number | null }) =>
-  a.avatarVersion ? `${API_BASE}/artists/${a.id}/avatar?v=${a.avatarVersion}` : undefined;
+/** Foto do artista: o avatar; sem avatar, a 1ª foto do portfólio; sem nenhuma, undefined (iniciais). */
+export const avatarUrl = (a: { id: string; avatarVersion: number | null; photos?: string[] }) =>
+  a.avatarVersion ? `${API_BASE}/artists/${a.id}/avatar?v=${a.avatarVersion}` : a.photos?.[0] ? photoUrl(a.photos[0]) : undefined;
+
+export interface GalleryPhoto {
+  id: string;
+  createdAt: string;
+  artist: { id: string; name: string; style: string; available: boolean };
+}
 
 /** Carrega um recurso da API; `reload` busca de novo sem piscar a tela. */
 export function useApi<T>(path: string | null) {

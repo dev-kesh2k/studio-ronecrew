@@ -8,6 +8,7 @@ import Welcome from './pages/auth/Welcome';
 import AdminLogin from './pages/auth/Login';
 import Home from './pages/client/Home';
 import Artists from './pages/client/Artists';
+import Gallery from './pages/client/Gallery';
 import ArtistProfile from './pages/client/ArtistProfile';
 import { BookDate, BookService } from './pages/client/BookingFlow';
 import BookPayment from './pages/client/BookPayment';
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/agenda" element={<Bookings />} />
           <Route path="/agenda/:id" element={<BookingDetail />} />
           <Route path="/artistas" element={<Artists />} />
+          <Route path="/galeria" element={<Gallery />} />
           <Route path="/perfil" element={<Profile />} />
           <Route path="/perfil/favoritos" element={<Favorites />} />
           <Route path="/perfil/cuidados" element={<Aftercare />} />

@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { BarChart3, CalendarDays, Home, LayoutGrid, Lock, LogOut, Settings, Tag, User, Users, type LucideIcon } from 'lucide-react';
+import { BarChart3, CalendarDays, Home, Images, LayoutGrid, Lock, LogOut, Settings, Tag, User, Users, type LucideIcon } from 'lucide-react';
 import { useAuth } from './auth';
 
 type Tab = { to: string; label: string; icon: LucideIcon; end?: boolean };
 
 export const CLIENT_TABS: Tab[] = [
   { to: '/', label: 'Início', icon: Home, end: true },
-  { to: '/agenda', label: 'Agenda', icon: CalendarDays },
+  { to: '/galeria', label: 'Galeria', icon: Images },
   { to: '/artistas', label: 'Artistas', icon: Users },
+  { to: '/agenda', label: 'Agenda', icon: CalendarDays },
   { to: '/perfil', label: 'Perfil', icon: User },
 ];
 
