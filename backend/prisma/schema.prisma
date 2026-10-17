@@ -53,12 +53,15 @@ model ArtistPhoto {
   artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
   mime      String
   data      Bytes
+  status    String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  uploadedBy String  @default("") // nome de quem enviou
   createdAt DateTime @default(now())
 
   likes    PhotoLike[]
   comments PhotoComment[]
 
   @@index([artistId])
+  @@index([status])
 }
 
 // Curtida da galeria: uma por aparelho (voter = id aleatório salvo no navegador).
@@ -125,6 +128,9 @@ model Service {
   priceCents  Int
   durationMin Int
   icon        String   @default("pen")
+  photo        Bytes? // foto do serviço (omitida por padrão nas consultas)
+  photoMime    String   @default("")
+  photoVersion Int      @default(0)
   active      Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
