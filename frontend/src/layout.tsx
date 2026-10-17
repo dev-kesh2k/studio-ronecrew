@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { BarChart3, CalendarDays, Home, Images, LayoutGrid, Lock, LogOut, Settings, Tag, User, Users, type LucideIcon } from 'lucide-react';
+import { BarChart3, CalendarDays, Home, Images, LayoutGrid, Lock, LogOut, MessageSquareHeart, Settings, Tag, User, Users, type LucideIcon } from 'lucide-react';
 import { useAuth } from './auth';
 
 type Tab = { to: string; label: string; icon: LucideIcon; end?: boolean };
@@ -26,7 +26,7 @@ export function Logo({ compact }: { compact?: boolean }) {
     <div className="flex items-center gap-3">
       <svg viewBox="0 0 512 512" className={compact ? 'h-10 w-10' : 'h-12 w-12'} aria-hidden>
         <rect width="512" height="512" rx="112" fill="#17171A" />
-        <path d="M256 96c-58 82-118 150-118 222a118 118 0 0 0 236 0c0-72-60-140-118-222z" fill="#F0553A" />
+        <path d="M256 96c-58 82-118 150-118 222a118 118 0 0 0 236 0c0-72-60-140-118-222z" fill="#E5383B" />
         <path d="M214 330a44 44 0 0 0 44 44" stroke="#0D0D0E" strokeWidth="22" strokeLinecap="round" fill="none" />
       </svg>
       <p className="font-display text-2xl font-extrabold uppercase leading-none">
@@ -64,6 +64,14 @@ export function TabsLayout({ tabs, admin }: { tabs: Tab[]; admin?: boolean }) {
         <div className="mt-auto flex flex-col gap-1">
           {admin ? (
             <>
+              <NavLink
+                to="/admin/feedback"
+                className={({ isActive }) =>
+                  `flex min-h-[48px] items-center gap-3 rounded-2xl px-4 text-base font-medium ${isActive ? 'bg-tint2 text-accent' : 'text-soft hover:bg-surface'}`
+                }
+              >
+                <MessageSquareHeart size={22} /> Feedback
+              </NavLink>
               <NavLink
                 to="/admin/config"
                 className={({ isActive }) =>

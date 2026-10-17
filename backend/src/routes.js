@@ -27,6 +27,7 @@ import {
   formatPhone,
   limitLookup,
   getSettings,
+  getPublicSettings,
   notifyAdmins,
   ACTIVE_STATUSES,
   brl,
@@ -44,6 +45,8 @@ import {
   serializeArtist,
 } from './booking.js';
 import { admin } from './admin.js';
+import { social, profilesByPhone, avatarOf } from './social.js';
+import { notifyClientWA, notifyStudioWA } from './whatsapp.js';
 
 export const api = express.Router();
 
@@ -53,15 +56,20 @@ api.get('/health', wrap(async (_req, res) => {
 }));
 
 api.get('/config', wrap(async (_req, res) => {
-  const s = await getSettings();
-  res.json({ ...s, today: todayStr(), now: nowTime() });
+  res.json({ ...(await getPublicSettings()), today: todayStr(), now: nowTime() });
 }));
 
 // ---------- Fotos do portfólio (públicas, ids não adivinháveis) ----------
 api.get('/photos/:id', wrap(async (req, res) => {
-  const p = await prisma.artistPhoto.findUnique({ where: { id: req.params.id } });
+  const p = await prisma.artistPhoto.findUnique({ where: { id: req.params.id }, include: { artist: { select: { name: true } } } });
   if (!p) throw new HttpError(404, 'Foto não encontrada');
-  res.set('Content-Type', p.mime).set('Cache-Control', 'public, max-age=31536000, immutable').send(Buffer.from(p.data));
+  res.set('Content-Type', p.mime).set('Cache-Control', 'public, max-age=31536000, immutable');
+  if (req.query.download) {
+    const ext = p.mime === 'image/png' ? 'png' : p.mime === 'image/webp' ? 'webp' : 'jpg';
+    const slug = p.artist.name.normalize('NFD').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'artista';
+    res.set('Content-Disposition', `attachment; filename="ronecrew-${slug}-${p.id.slice(-6)}.${ext}"`);
+  }
+  res.send(Buffer.from(p.data));
 }));
 
 // Avatar do artista (público; a URL leva ?v=<versão>, então pode ficar em cache para sempre).
@@ -93,24 +101,16 @@ api.get('/artists/:id', wrap(async (req, res) => {
     where: { artistId: a.id },
     orderBy: { createdAt: 'desc' },
     take: 5,
-    select: { id: true, rating: true, comment: true, createdAt: true, booking: { select: { clientName: true } } },
+    select: { id: true, rating: true, comment: true, createdAt: true, booking: { select: { clientName: true, phoneKey: true } } },
   });
+  const profiles = await profilesByPhone(reviews.map((r) => r.booking?.phoneKey));
   res.json({
     artist: serializeArtist(a, stats),
-    reviews: reviews.map(({ booking, ...r }) => ({ ...r, name: (booking?.clientName || 'Cliente').split(/\s+/)[0] })),
+    reviews: reviews.map(({ booking, ...r }) => {
+      const p = profiles.get(booking?.phoneKey);
+      return { ...r, name: (p?.name || booking?.clientName || 'Cliente').split(/\s+/)[0], avatar: avatarOf(p) };
+    }),
   });
-}));
-
-// Galeria: trabalhos de todos os artistas da equipe (mais recentes primeiro).
-api.get('/gallery', wrap(async (req, res) => {
-  const artistId = text(req.query.artistId, 'Artista', { max: 40 });
-  const photos = await prisma.artistPhoto.findMany({
-    where: { artist: { archived: false }, ...(artistId ? { artistId } : {}) },
-    select: { id: true, createdAt: true, artist: { select: { id: true, name: true, style: true, available: true } } },
-    orderBy: { createdAt: 'desc' },
-    take: 300,
-  });
-  res.json({ photos });
 }));
 
 api.get('/services', wrap(async (req, res) => {
@@ -212,12 +212,16 @@ api.post('/bookings', wrap(async (req, res) => {
   );
 
   const when = `${shortDate(booking.date)}, ${booking.time}`;
+  const summary = `${clientName} · ${service.name} com ${artist.name} · ${when}`;
   if (status === 'requested') {
-    await notifyAdmins('Nova solicitação de agendamento', `${clientName} · ${service.name} com ${artist.name} · ${when}`, '/admin/agenda');
+    await notifyAdmins('Nova solicitação de agendamento', summary, '/admin/agenda');
+    notifyStudioWA('studio_request', `nova solicitação para aprovar: ${summary}. Celular ${formatPhone(key)}.`);
   } else {
-    await notifyAdmins('Novo agendamento confirmado', `${clientName} · ${service.name} com ${artist.name} · ${when}${paysNow ? ` · sinal ${brl(deposit)} pago` : ''}`, '/admin/agenda');
+    await notifyAdmins('Novo agendamento confirmado', `${summary}${paysNow ? ` · sinal ${brl(deposit)} pago` : ''}`, '/admin/agenda');
+    notifyStudioWA('studio_booking', `novo agendamento confirmado: ${summary}${paysNow ? `, sinal ${brl(deposit)} pago` : ''}. Celular ${formatPhone(key)}.`);
   }
   const full = await prisma.booking.findUnique({ where: { id: booking.id }, include: bookingInclude });
+  notifyClientWA(status === 'requested' ? 'requested' : 'confirmed', full);
   res.status(201).json({ booking: clientView(full) });
 }));
 
@@ -245,7 +249,9 @@ api.post('/bookings/:id/cancel', wrap(async (req, res) => {
   if (b.date < todayStr()) throw new HttpError(400, 'Esse agendamento já passou');
   const reason = text(req.body.reason, 'Motivo', { max: 300 });
   await prisma.booking.update({ where: { id: b.id }, data: { status: 'cancelled', cancelReason: reason || 'Cancelado pelo cliente' } });
-  await notifyAdmins('Agendamento cancelado pelo cliente', `${b.clientName} · ${b.service.name} com ${b.artist.name} · ${shortDate(b.date)}, ${b.time}`, '/admin/agenda');
+  const summary = `${b.clientName} · ${b.service.name} com ${b.artist.name} · ${shortDate(b.date)}, ${b.time}`;
+  await notifyAdmins('Agendamento cancelado pelo cliente', summary, '/admin/agenda');
+  notifyStudioWA('studio_cancel', `o cliente cancelou: ${summary}${reason ? ` (motivo: ${reason})` : ''}.`);
   res.json({ ok: true });
 }));
 
@@ -256,7 +262,10 @@ api.post('/bookings/:id/review', wrap(async (req, res) => {
   const rating = int(req.body.rating, 'Nota', { min: 1, max: 5 });
   const comment = text(req.body.comment, 'Comentário', { max: 500 });
   await prisma.review.create({ data: { bookingId: b.id, artistId: b.artistId, rating, comment } });
-  res.status(201).json({ ok: true });
+  await notifyAdmins(`Nova avaliação: ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`, `${b.clientName} · ${b.service.name} com ${b.artist.name}${comment ? ` · "${comment}"` : ''}`, '/admin/feedback');
+  // Quem gostou (4 ou 5 estrelas) é convidado a avaliar também no Google.
+  const { googleReviewUrl } = await getSettings();
+  res.status(201).json({ ok: true, googleReviewUrl: rating >= 4 && googleReviewUrl ? googleReviewUrl : null });
 }));
 
 // ---------- Referências (imagens anexadas ao agendamento) ----------
@@ -277,6 +286,9 @@ api.get('/references/:id/image', wrap(async (req, res) => {
   if (!ok) throw new HttpError(404, 'Imagem não encontrada');
   res.set('Content-Type', r.mime).set('Cache-Control', 'private, max-age=86400').send(Buffer.from(r.data));
 }));
+
+// Perfil/avatar do cliente, feedback, curtidas e comentários da galeria (públicos).
+api.use(social);
 
 // ---------- Login do estúdio (somente administradores) ----------
 api.post('/auth/login', wrap(async (req, res) => {

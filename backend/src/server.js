@@ -1,6 +1,7 @@
 import express from 'express';
 import { api } from './routes.js';
 import { HttpError } from './util.js';
+import { startReminderLoop } from './whatsapp.js';
 
 const app = express();
 app.set('trust proxy', true);
@@ -31,4 +32,5 @@ app.use((err, _req, res, _next) => {
 const port = Number(process.env.PORT) || 3000;
 app.listen(port, '0.0.0.0', () => {
   console.log(`Studio RoneCrew API ouvindo em 0.0.0.0:${port} (prefixo ${publicPath || '/'})`);
+  startReminderLoop();
 });

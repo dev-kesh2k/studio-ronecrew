@@ -84,8 +84,7 @@ export default function Services() {
     setBusy(true);
     setErr('');
     try {
-      const { settings } = await api.get<{ settings: Record<string, unknown> }>('/admin/settings');
-      await api.put('/admin/settings', { ...settings, depositCents: cents });
+      await api.put('/admin/settings', { depositCents: cents });
       await reloadConfig();
       toast('Valor do sinal atualizado');
       setDepOpen(false);

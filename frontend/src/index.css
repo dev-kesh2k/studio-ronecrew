@@ -22,7 +22,7 @@ body {
 
 @layer components {
   .h1 {
-    @apply min-w-0 break-words font-display text-[clamp(1.85rem,8.5vw,2.5rem)] font-extrabold uppercase leading-[0.95] tracking-[0.01em] text-ink;
+    @apply min-w-0 break-words font-display text-[clamp(1.85rem,8.5vw,2.5rem)] font-extrabold uppercase leading-[0.95] tracking-[0.01em] text-accent;
   }
   .h2 {
     @apply font-display text-[clamp(1.35rem,6vw,1.6rem)] font-bold uppercase leading-none tracking-[0.01em] text-ink;

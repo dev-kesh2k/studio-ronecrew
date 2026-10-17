@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Award, ChevronLeft, Heart, ImageOff } from 'lucide-react';
-import { avatarUrl, photoUrl, useApi, type Artist } from '../../api';
+import { apiUrl, avatarUrl, photoUrl, useApi, type Artist } from '../../api';
 import { getFavorites, toggleFavorite } from '../../client';
 import { FullPage } from '../../layout';
 import { Avatar, ErrorBox, Lightbox, Loading, ServiceIcon, Stars, toast } from '../../ui';
@@ -14,6 +14,7 @@ interface Review {
   comment: string;
   createdAt: string;
   name: string;
+  avatar: string | null;
 }
 
 export default function ArtistProfile() {
@@ -140,8 +141,9 @@ export default function ArtistProfile() {
           <div className="flex flex-col gap-3">
             {data.reviews.map((r) => (
               <div key={r.id} className="card p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-bold">{r.name}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Avatar name={r.name} size="sm" src={apiUrl(r.avatar)} />
+                  <p className="min-w-0 flex-1 font-bold">{r.name}</p>
                   <Stars value={r.rating} />
                 </div>
                 {r.comment && <p className="mt-2 text-soft">{r.comment}</p>}

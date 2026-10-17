@@ -41,6 +41,14 @@ export default function BookingDetail() {
   const [comment, setComment] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [googleUrl, setGoogleUrl] = useState<string | null>(null);
+
+  // Link do WhatsApp após a sessão: /agenda/<id>?avaliar=1 abre a avaliação direto.
+  const wantsReview = params.get('avaliar') === '1';
+  const canReview = data?.booking.status === 'completed' && !data.booking.review;
+  useEffect(() => {
+    if (wantsReview && canReview) setReviewOpen(true);
+  }, [wantsReview, canReview]);
 
   if (!phone)
     return (
@@ -73,6 +81,22 @@ export default function BookingDetail() {
       await fn();
       toast(ok);
       close();
+      await reload();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitReview() {
+    setBusy(true);
+    setErr('');
+    try {
+      const r = await api.post<{ googleReviewUrl: string | null }>(`/bookings/${b.id}/review`, { rating, comment, phone });
+      setReviewOpen(false);
+      if (r.googleReviewUrl) setGoogleUrl(r.googleReviewUrl);
+      else toast('Obrigado pela avaliação!');
       await reload();
     } catch (e) {
       setErr((e as Error).message);
@@ -163,6 +187,11 @@ export default function BookingDetail() {
           <p className="mb-1 font-bold">Sua avaliação</p>
           <Stars value={b.review.rating} />
           {b.review.comment && <p className="mt-2 text-soft">{b.review.comment}</p>}
+          {b.review.rating >= 4 && config?.googleReviewUrl && (
+            <a href={config.googleReviewUrl} target="_blank" rel="noreferrer" className="btn-secondary mt-4 w-full">
+              <GoogleG /> Avaliar também no Google
+            </a>
+          )}
         </section>
       )}
 
@@ -207,16 +236,41 @@ export default function BookingDetail() {
             </button>
           ))}
         </div>
-        <Field label="Comentário (opcional)">
+        <p className="-mt-2 mb-4 text-center text-sm text-muted">{['', 'Muito ruim', 'Ruim', 'Regular', 'Boa', 'Excelente'][rating]}</p>
+        <Field label={rating <= 3 ? 'O que podemos melhorar? (opcional)' : 'Comentário (opcional)'}>
           <textarea className="input min-h-[100px]" maxLength={500} value={comment} onChange={(e) => setComment(e.target.value)} />
         </Field>
         <div className="mt-4">
           <FormError message={err} />
         </div>
-        <button className="btn-primary mt-4 w-full" disabled={busy} onClick={() => run(() => api.post(`/bookings/${b.id}/review`, { rating, comment, phone }), 'Obrigado pela avaliação!', () => setReviewOpen(false))}>
+        <button className="btn-primary mt-4 w-full" disabled={busy} onClick={submitReview}>
           Enviar avaliação
         </button>
       </Sheet>
+
+      <Sheet open={!!googleUrl} onClose={() => setGoogleUrl(null)} title="Obrigado!">
+        <p className="mb-5 text-soft">Que bom que você curtiu! Pode deixar essa avaliação também no Google? Ajuda muito o estúdio a ser encontrado.</p>
+        {googleUrl && (
+          <a href={googleUrl} target="_blank" rel="noreferrer" className="btn-primary w-full" onClick={() => setGoogleUrl(null)}>
+            <GoogleG /> Avaliar no Google
+          </a>
+        )}
+        <button className="btn-secondary mt-3 w-full" onClick={() => setGoogleUrl(null)}>
+          Agora não
+        </button>
+      </Sheet>
     </div>
+  );
+}
+
+/** "G" do Google (logo simples em SVG). */
+function GoogleG() {
+  return (
+    <svg viewBox="0 0 48 48" className="h-5 w-5 shrink-0" aria-hidden>
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+      <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+    </svg>
   );
 }

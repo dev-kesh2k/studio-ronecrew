@@ -19,6 +19,9 @@ import PersonalInfo from './pages/client/PersonalInfo';
 import Favorites from './pages/client/Favorites';
 import Aftercare from './pages/client/Aftercare';
 import Help from './pages/client/Help';
+import Feedback from './pages/client/Feedback';
+import About from './pages/client/About';
+import AdminFeedback from './pages/admin/Feedback';
 import Notifications from './pages/Notifications';
 import Dashboard from './pages/admin/Dashboard';
 import Agenda from './pages/admin/Agenda';
@@ -65,6 +68,8 @@ export default function App() {
           <Route path="/perfil/favoritos" element={<Favorites />} />
           <Route path="/perfil/cuidados" element={<Aftercare />} />
           <Route path="/perfil/ajuda" element={<Help />} />
+          <Route path="/perfil/feedback" element={<Feedback />} />
+          <Route path="/sobre" element={<About />} />
         </Route>
         <Route path="/artistas/:id" element={<ArtistProfile />} />
         <Route path="/agendar/servico" element={<BookService />} />
@@ -86,6 +91,7 @@ export default function App() {
           <Route path="/admin/servicos" element={<Services />} />
           <Route path="/admin/financeiro" element={<Finance />} />
           <Route path="/admin/config" element={<Settings />} />
+          <Route path="/admin/feedback" element={<AdminFeedback />} />
           <Route path="/admin/conta" element={<PersonalInfo />} />
           <Route path="/admin/notificacoes" element={<Notifications />} />
         </Route>

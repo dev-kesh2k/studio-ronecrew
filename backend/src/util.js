@@ -17,7 +17,7 @@ function dbUrl() {
 }
 
 // A foto do artista (bytes) só é lida pela rota da imagem: fica fora de todas as outras consultas.
-export const prisma = new PrismaClient({ datasources: { db: { url: dbUrl() } }, omit: { artist: { avatar: true } } });
+export const prisma = new PrismaClient({ datasources: { db: { url: dbUrl() } }, omit: { artist: { avatar: true }, clientProfile: { avatar: true } } });
 
 export class HttpError extends Error {
   constructor(status, message) {
@@ -217,20 +217,55 @@ export function image(v) {
 
 
 // ---------- Configurações do estúdio ----------
-export const SETTING_DEFAULTS = {
+/** Visíveis para o cliente (GET /config). */
+export const PUBLIC_SETTINGS = {
   studioName: 'RoneCrew Tatoo',
   depositCents: '10000',
   phone: '',
   whatsapp: '',
   address: '',
+  hours: '',
+  about: '',
   instagram: '',
+  facebook: '',
+  tiktok: '',
+  youtube: '',
+  website: '',
+  googleReviewUrl: '',
 };
+
+/** Só do estúdio: integração com a API do WhatsApp (Cloud API da Meta). */
+export const PRIVATE_SETTINGS = {
+  appUrl: '',
+  waEnabled: 'false',
+  waToken: '',
+  waPhoneNumberId: '',
+  waMode: 'text', // text | template
+  waTemplate: '',
+  waLanguage: 'pt_BR',
+  waNotifyStudio: 'true',
+  waReminders: 'true',
+};
+
+export const SETTING_DEFAULTS = { ...PUBLIC_SETTINGS, ...PRIVATE_SETTINGS };
 
 export async function getSettings() {
   const rows = await prisma.setting.findMany();
   const s = { ...SETTING_DEFAULTS };
   for (const r of rows) if (r.key in s) s[r.key] = r.value;
   return { ...s, depositCents: Number(s.depositCents) || 0 };
+}
+
+export async function getPublicSettings() {
+  const s = await getSettings();
+  return Object.fromEntries(Object.keys(PUBLIC_SETTINGS).map((k) => [k, s[k]]));
+}
+
+/** Link http(s) opcional. */
+export function url(v, field) {
+  const s = text(v, field, { max: 300 });
+  if (s && !/^https?:\/\/[^\s]+$/i.test(s)) throw new HttpError(400, `${field}: informe um link começando com https://`);
+  return s;
 }
 
 export async function notify(userIds, title, body = '', link = '') {

@@ -23,7 +23,7 @@ export default function Welcome({ onDone }: { onDone: () => void }) {
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-[32px] bg-bg shadow-2xl">
             <svg viewBox="0 0 512 512" className="h-16 w-16" aria-hidden>
-              <path d="M256 60c-66 92-134 168-134 250a134 134 0 0 0 268 0c0-82-68-158-134-250z" fill="#F0553A" />
+              <path d="M256 60c-66 92-134 168-134 250a134 134 0 0 0 268 0c0-82-68-158-134-250z" fill="#E5383B" />
               <path d="M208 330a50 50 0 0 0 50 50" stroke="#0D0D0E" strokeWidth="24" strokeLinecap="round" fill="none" />
             </svg>
           </div>

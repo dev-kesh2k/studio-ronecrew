@@ -19,10 +19,12 @@ import {
   oneOf,
   image,
   getSettings,
-  SETTING_DEFAULTS,
+  url,
+  formatPhone,
   ACTIVE_STATUSES,
   BLOCKING_STATUSES,
 } from './util.js';
+import { isConfigured, notifyClientWA, sendWhatsApp } from './whatsapp.js';
 import { checkBookable, createBooking, bookingInclude, serializeBooking, paidCents, artistInclude, artistStats, serializeArtist } from './booking.js';
 
 export const admin = express.Router();
@@ -64,6 +66,7 @@ admin.get('/dashboard', wrap(async (req, res) => {
     depositsDueClients: new Set(dueList.map((b) => b.clientId || b.clientName)).size,
     upcoming: upcoming.map(serializeBooking),
     unread,
+    feedbackUnread: await prisma.feedback.count({ where: { read: false } }),
   });
 }));
 
@@ -118,6 +121,7 @@ admin.post('/bookings', wrap(async (req, res) => {
     received ? [{ kind: 'deposit', method, amountCents: deposit }] : [],
   );
   const full = await prisma.booking.findUnique({ where: { id: booking.id }, include: bookingInclude });
+  notifyClientWA(full.status === 'confirmed' ? 'confirmed' : 'approved', full);
   res.status(201).json({ booking: serializeBooking(full) });
 }));
 
@@ -127,11 +131,18 @@ async function loadBooking(id) {
   return b;
 }
 
+/** Avisa o cliente pelo WhatsApp com os dados já atualizados (sem atrasar a resposta). */
+const waAfter = (id, event) =>
+  loadBooking(id)
+    .then((b) => notifyClientWA(event, b))
+    .catch(() => undefined);
+
 admin.post('/bookings/:id/approve', wrap(async (req, res) => {
   const b = await loadBooking(req.params.id);
   if (b.status !== 'requested') throw new HttpError(400, 'Essa solicitação já foi respondida');
   const status = b.depositPaid || b.depositCents === 0 ? 'confirmed' : 'pending_deposit';
   await prisma.booking.update({ where: { id: b.id }, data: { status } });
+  waAfter(b.id, 'approved');
   res.json({ status });
 }));
 
@@ -140,6 +151,7 @@ admin.post('/bookings/:id/reject', wrap(async (req, res) => {
   if (b.status !== 'requested') throw new HttpError(400, 'Essa solicitação já foi respondida');
   const reason = text(req.body.reason, 'Motivo', { max: 300 });
   await prisma.booking.update({ where: { id: b.id }, data: { status: 'rejected', cancelReason: reason || 'Horário indisponível' } });
+  waAfter(b.id, 'rejected');
   res.json({ status: 'rejected' });
 }));
 
@@ -151,6 +163,7 @@ admin.post('/bookings/:id/deposit', wrap(async (req, res) => {
     prisma.booking.update({ where: { id: b.id }, data: { status: 'confirmed', depositPaid: true } }),
     prisma.payment.create({ data: { bookingId: b.id, kind: 'deposit', method, amountCents: b.depositCents, day: todayStr() } }),
   ]);
+  waAfter(b.id, 'deposit');
   res.json({ status: 'confirmed' });
 }));
 
@@ -164,6 +177,7 @@ admin.post('/bookings/:id/complete', wrap(async (req, res) => {
     prisma.booking.update({ where: { id: b.id }, data: { status: 'completed', completedAt: new Date() } }),
     ...(amount > 0 ? [prisma.payment.create({ data: { bookingId: b.id, kind: 'final', method, amountCents: amount, day: todayStr() } })] : []),
   ]);
+  waAfter(b.id, 'completed');
   res.json({ status: 'completed', paidCents: paidCents(b) + amount });
 }));
 
@@ -172,6 +186,7 @@ admin.post('/bookings/:id/cancel', wrap(async (req, res) => {
   if (!ACTIVE_STATUSES.includes(b.status)) throw new HttpError(400, 'Esse agendamento não pode ser cancelado');
   const reason = text(req.body.reason, 'Motivo', { max: 300 });
   await prisma.booking.update({ where: { id: b.id }, data: { status: 'cancelled', cancelReason: reason || 'Cancelado pelo estúdio' } });
+  waAfter(b.id, 'cancelled');
   res.json({ status: 'cancelled' });
 }));
 
@@ -401,23 +416,123 @@ admin.get('/finance', wrap(async (req, res) => {
 }));
 
 // ---------- Configurações ----------
+/** O token do WhatsApp nunca volta inteiro para o navegador. */
+async function settingsView() {
+  const s = await getSettings();
+  const { waToken, ...rest } = s;
+  return { ...rest, waTokenSet: !!waToken, waTokenHint: waToken ? `••••${waToken.slice(-4)}` : '', waConfigured: isConfigured(s) };
+}
+
 admin.get('/settings', wrap(async (_req, res) => {
-  res.json({ settings: await getSettings() });
+  res.json({ settings: await settingsView() });
 }));
 
+const handle = (v) => text(v, 'Rede social', { max: 120 }).replace(/^@/, '');
+// Validação de cada campo; só os campos enviados são gravados.
+const SETTING_FIELDS = {
+  studioName: (v) => text(v, 'Nome do estúdio', { required: true, max: 60 }),
+  depositCents: (v) => String(int(v, 'Valor do sinal', { min: 0, max: 10_000_000 })),
+  phone: (v) => phone(v),
+  whatsapp: (v) => phone(v),
+  address: (v) => text(v, 'Endereço', { max: 200 }),
+  hours: (v) => text(v, 'Horário de funcionamento', { max: 300 }),
+  about: (v) => text(v, 'Sobre o estúdio', { max: 3000 }),
+  instagram: handle,
+  facebook: (v) => url(v, 'Facebook'),
+  tiktok: handle,
+  youtube: (v) => url(v, 'YouTube'),
+  website: (v) => url(v, 'Site'),
+  googleReviewUrl: (v) => url(v, 'Link de avaliação do Google'),
+  appUrl: (v) => url(v, 'Endereço do app'),
+  waEnabled: (v) => String(v === true || v === 'true'),
+  waPhoneNumberId: (v) => {
+    const s = text(v, 'ID do número', { max: 40 });
+    if (s && !/^\d{6,30}$/.test(s)) throw new HttpError(400, 'ID do número do WhatsApp: só números (veja no painel da Meta)');
+    return s;
+  },
+  waMode: (v) => oneOf(v, 'Modo de envio', ['text', 'template']),
+  waTemplate: (v) => {
+    const s = text(v, 'Nome do modelo', { max: 120 });
+    if (s && !/^[a-z0-9_]+$/.test(s)) throw new HttpError(400, 'Nome do modelo: letras minúsculas, números e _');
+    return s;
+  },
+  waLanguage: (v) => {
+    const s = text(v, 'Idioma do modelo', { max: 10 }) || 'pt_BR';
+    if (!/^[a-z]{2}(_[A-Z]{2})?$/.test(s)) throw new HttpError(400, 'Idioma do modelo inválido (ex.: pt_BR)');
+    return s;
+  },
+  waNotifyStudio: (v) => String(v === true || v === 'true'),
+  waReminders: (v) => String(v === true || v === 'true'),
+};
+
 admin.put('/settings', wrap(async (req, res) => {
-  const values = {
-    studioName: text(req.body.studioName, 'Nome do estúdio', { required: true, max: 60 }),
-    depositCents: String(int(req.body.depositCents, 'Valor do sinal', { min: 0, max: 10_000_000 })),
-    phone: phone(req.body.phone),
-    whatsapp: phone(req.body.whatsapp),
-    address: text(req.body.address, 'Endereço', { max: 200 }),
-    instagram: text(req.body.instagram, 'Instagram', { max: 60 }).replace(/^@/, ''),
-  };
+  const values = {};
+  for (const [key, fn] of Object.entries(SETTING_FIELDS)) if (key in req.body) values[key] = fn(req.body[key]);
+  if (req.body.waTokenClear) values.waToken = '';
+  else if (typeof req.body.waToken === 'string' && req.body.waToken.trim()) values.waToken = text(req.body.waToken, 'Token', { max: 1000 });
+  const next = { ...(await getSettings()), ...values };
+  if (next.waEnabled === 'true' && (!next.waToken || !next.waPhoneNumberId)) {
+    throw new HttpError(400, 'Para ligar o WhatsApp informe o token e o ID do número');
+  }
+  if (next.waEnabled === 'true' && next.waMode === 'template' && !next.waTemplate) throw new HttpError(400, 'Informe o nome do modelo aprovado');
   await prisma.$transaction(
-    Object.keys(SETTING_DEFAULTS).map((key) =>
-      prisma.setting.upsert({ where: { key }, update: { value: values[key] }, create: { key, value: values[key] } }),
-    ),
+    Object.entries(values).map(([key, value]) => prisma.setting.upsert({ where: { key }, update: { value }, create: { key, value } })),
   );
-  res.json({ settings: await getSettings() });
+  res.json({ settings: await settingsView() });
+}));
+
+// ---------- WhatsApp: teste e histórico ----------
+admin.post('/whatsapp/test', wrap(async (req, res) => {
+  const s = await getSettings();
+  if (!isConfigured(s)) throw new HttpError(400, 'Ligue o WhatsApp e salve o token e o ID do número antes de testar');
+  const to = req.body.to ? phone(req.body.to) : s.whatsapp;
+  if (!to) throw new HttpError(400, 'Informe o número para o teste');
+  const r = await sendWhatsApp(to, `Teste do ${s.studioName}: as notificações pelo WhatsApp estão funcionando.`, 'test', s);
+  if (!r.ok) throw new HttpError(422, `A API do WhatsApp recusou: ${r.error}`);
+  res.json({ ok: true });
+}));
+
+admin.get('/whatsapp/log', wrap(async (_req, res) => {
+  res.json({ log: await prisma.whatsAppLog.findMany({ orderBy: { createdAt: 'desc' }, take: 30 }) });
+}));
+
+// ---------- Feedback, avaliações e comentários dos clientes ----------
+admin.get('/feedback', wrap(async (_req, res) => {
+  const [feedback, reviews, comments] = await Promise.all([
+    prisma.feedback.findMany({ orderBy: { createdAt: 'desc' }, take: 200 }),
+    prisma.review.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        artist: { select: { name: true } },
+        booking: { select: { clientName: true, clientPhone: true, date: true, service: { select: { name: true } } } },
+      },
+    }),
+    prisma.photoComment.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      select: { id: true, name: true, text: true, createdAt: true, phoneKey: true, photo: { select: { id: true, artist: { select: { name: true } } } } },
+    }),
+  ]);
+  const avg = reviews.length ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10 : null;
+  res.json({
+    feedback: feedback.map((f) => ({ ...f, phone: f.phoneKey ? formatPhone(f.phoneKey) : '' })),
+    reviews,
+    comments: comments.map(({ phoneKey: k, ...c }) => ({ ...c, phone: formatPhone(k) })),
+    stats: { reviews: reviews.length, average: avg, unreadFeedback: feedback.filter((f) => !f.read).length },
+  });
+}));
+
+admin.patch('/feedback/:id', wrap(async (req, res) => {
+  await prisma.feedback.update({ where: { id: req.params.id }, data: { read: req.body.read !== false } });
+  res.json({ ok: true });
+}));
+
+admin.delete('/feedback/:id', wrap(async (req, res) => {
+  await prisma.feedback.delete({ where: { id: req.params.id } });
+  res.json({ ok: true });
 }));

@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CalendarDays, ChevronRight, Search } from 'lucide-react';
+import { CalendarDays, ChevronRight, MapPin, Search } from 'lucide-react';
+import { useConfig } from '../../config';
+import Social, { socialLinks } from './Social';
 import { photoUrl, useApi, type Artist, type Booking, type GalleryPhoto } from '../../api';
 import { getSavedName, getSavedPhone } from '../../client';
 import { ErrorBox, Loading } from '../../ui';
@@ -14,6 +16,7 @@ export default function Home() {
   const name = getSavedName();
   const artists = useApi<{ artists: Artist[]; styles: string[] }>('/artists');
   const gallery = useApi<{ photos: GalleryPhoto[] }>('/gallery');
+  const config = useConfig();
   const mine = useApi<{ bookings: Booking[]; today: string }>(phone ? `/bookings/by-phone?phone=${encodeURIComponent(phone)}` : null);
 
   const next = mine.data?.bookings
@@ -140,6 +143,30 @@ export default function Home() {
         </div>
         {artists.data && featured.length === 0 && <p className="text-muted">Nenhum artista disponível no momento.</p>}
       </section>
+
+      {config && (
+        <section className="card mt-8 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-display text-2xl font-bold uppercase text-accent">{config.studioName}</p>
+              {config.address && (
+                <p className="mt-1 flex items-start gap-1.5 text-sm text-muted">
+                  <MapPin size={16} className="mt-0.5 shrink-0" /> <span className="break-words">{config.address}</span>
+                </p>
+              )}
+            </div>
+            <Link to="/sobre" className="btn-secondary min-h-[44px] px-4 text-sm">
+              Sobre e localização
+            </Link>
+          </div>
+          {socialLinks(config).length > 0 && (
+            <div className="mt-4 border-t border-line pt-4">
+              <p className="mb-2 text-sm text-muted">Siga o estúdio</p>
+              <Social config={config} compact />
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
