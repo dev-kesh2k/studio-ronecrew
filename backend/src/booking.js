@@ -2,11 +2,11 @@
 import {
   prisma,
   HttpError,
-  SLOTS,
+  getSettings,
+  slotsOf,
   BLOCKING_STATUSES,
   todayStr,
   nowTime,
-  weekday,
   toMin,
   isDay,
   addDays,
@@ -24,7 +24,8 @@ const overlaps = (time, duration, list) => {
 /** Horários do dia para um artista/duração, marcando os indisponíveis. */
 export async function daySlots(artistId, date, durationMin) {
   const today = todayStr();
-  const closed = weekday(date) === 0 || date < today;
+  const open = slotsOf((await getSettings()).schedule, date);
+  const closed = !open.length || date < today;
   const booked = closed
     ? []
     : await prisma.booking.findMany({
@@ -32,7 +33,7 @@ export async function daySlots(artistId, date, durationMin) {
         select: { time: true, durationMin: true },
       });
   const now = toMin(nowTime());
-  return SLOTS.map((time) => ({
+  return open.map((time) => ({
     time,
     available: !closed && !(date === today && toMin(time) <= now) && !overlaps(time, durationMin, booked),
   }));
@@ -41,11 +42,11 @@ export async function daySlots(artistId, date, durationMin) {
 /** Valida artista/serviço/data/hora de um novo agendamento. */
 export async function checkBookable({ artistId, serviceId, date, time }) {
   if (!isDay(date)) throw new HttpError(400, 'Data inválida');
-  if (!SLOTS.includes(time)) throw new HttpError(400, 'Horário inválido');
+
   const today = todayStr();
   if (date < today) throw new HttpError(400, 'Não é possível agendar em datas passadas');
   if (date > addDays(today, 365)) throw new HttpError(400, 'Agende com no máximo 1 ano de antecedência');
-  if (weekday(date) === 0) throw new HttpError(400, 'O estúdio não abre aos domingos');
+  if (!slotsOf((await getSettings()).schedule, date).includes(time)) throw new HttpError(400, 'O estúdio não atende nesse dia/horário');
   if (date === today && toMin(time) <= toMin(nowTime())) throw new HttpError(400, 'Esse horário já passou');
 
   const artist = await prisma.artist.findUnique({ where: { id: String(artistId || '') }, include: { services: { select: { id: true } } } });
@@ -97,7 +98,7 @@ export function serializeBooking(b) {
 export const artistInclude = (onlyActiveServices) => ({
   services: {
     where: onlyActiveServices ? { active: true } : undefined,
-    select: { id: true, name: true, priceCents: true, durationMin: true, icon: true, active: true },
+    select: { id: true, name: true, priceCents: true, durationMin: true, icon: true, photoVersion: true, active: true },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   },
   photos: { select: { id: true }, orderBy: { createdAt: 'asc' } },

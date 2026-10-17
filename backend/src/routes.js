@@ -79,6 +79,21 @@ api.get('/artists/:id/avatar', wrap(async (req, res) => {
   res.set('Content-Type', a.avatarMime).set('Cache-Control', 'public, max-age=31536000, immutable').send(Buffer.from(a.avatar));
 }));
 
+// Logo do estúdio (pública; a URL leva ?v=<versão>).
+api.get('/logo', wrap(async (_req, res) => {
+  const row = await prisma.setting.findUnique({ where: { key: 'logo' } });
+  const m = row && /^data:([\w/+.-]+);base64,(.+)$/.exec(row.value);
+  if (!m) throw new HttpError(404, 'Sem logo');
+  res.set('Content-Type', m[1]).set('Cache-Control', 'public, max-age=31536000, immutable').send(Buffer.from(m[2], 'base64'));
+}));
+
+// Foto do serviço (pública; a URL leva ?v=<versão>).
+api.get('/services/:id/photo', wrap(async (req, res) => {
+  const s = await prisma.service.findUnique({ where: { id: req.params.id }, select: { photo: true, photoMime: true } });
+  if (!s?.photo || !s.photoMime) throw new HttpError(404, 'Sem foto');
+  res.set('Content-Type', s.photoMime).set('Cache-Control', 'public, max-age=31536000, immutable').send(Buffer.from(s.photo));
+}));
+
 // ---------- Artistas e serviços (públicos) ----------
 api.get('/artists', wrap(async (req, res) => {
   const q = text(req.query.q, 'Busca', { max: 80 });
@@ -117,6 +132,7 @@ api.get('/services', wrap(async (req, res) => {
   const artistId = text(req.query.artistId, 'Artista', { max: 40 });
   const services = await prisma.service.findMany({
     where: { active: true, ...(artistId ? { artists: { some: { id: artistId } } } : {}) },
+    omit: { photo: true },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   });
   res.json({ services });
@@ -180,7 +196,7 @@ async function bookingForPhone(id, rawPhone, include = bookingInclude) {
 api.post('/bookings', wrap(async (req, res) => {
   limitLookup(`book:${req.ip}`, 20);
   const { raw, key } = mobile(req.body.clientPhone);
-  const name = text(req.body.clientName, 'Nome', { max: 100 });
+  const name = text(req.body.clientName, 'Nome', { required: true, max: 100 });
   const { artist, service } = await checkBookable(req.body);
   const notes = text(req.body.notes, 'Detalhes', { max: 1000 });
   const settings = await getSettings();
