@@ -125,6 +125,9 @@ model Service {
   priceCents  Int
   durationMin Int
   icon        String   @default("pen")
+  photo        Bytes? // foto do serviço (omitida por padrão nas consultas)
+  photoMime    String   @default("")
+  photoVersion Int      @default(0)
   active      Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())

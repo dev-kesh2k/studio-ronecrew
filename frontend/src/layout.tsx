@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { BarChart3, CalendarDays, Home, Images, LayoutGrid, Lock, LogOut, MessageSquareHeart, Settings, Tag, User, Users, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Home, Images, LayoutGrid, Lock, LogOut, MessageSquareHeart, Settings, Tag, User, Users, type LucideIcon } from 'lucide-react';
+import { API_BASE } from './api';
 import { useAuth } from './auth';
+import { useConfig } from './config';
 
 type Tab = { to: string; label: string; icon: LucideIcon; end?: boolean };
 
@@ -18,17 +20,23 @@ export const ADMIN_TABS: Tab[] = [
   { to: '/admin/agenda', label: 'Agenda', icon: CalendarDays },
   { to: '/admin/equipe', label: 'Equipe', icon: Users },
   { to: '/admin/servicos', label: 'Serviços', icon: Tag },
-  { to: '/admin/financeiro', label: 'Financeiro', icon: BarChart3 },
+  { to: '/admin/feedback', label: 'Feedback', icon: MessageSquareHeart },
 ];
 
 export function Logo({ compact }: { compact?: boolean }) {
+  const config = useConfig();
+  const size = compact ? 'h-10 w-10' : 'h-12 w-12';
   return (
     <div className="flex items-center gap-3">
+      {config?.logoVersion ? (
+        <img src={`${API_BASE}/logo?v=${config.logoVersion}`} alt="" className={`${size} shrink-0 rounded-xl object-contain`} />
+      ) : (
       <svg viewBox="0 0 512 512" className={compact ? 'h-10 w-10' : 'h-12 w-12'} aria-hidden>
         <rect width="512" height="512" rx="112" fill="#17171A" />
         <path d="M256 96c-58 82-118 150-118 222a118 118 0 0 0 236 0c0-72-60-140-118-222z" fill="#E5383B" />
         <path d="M214 330a44 44 0 0 0 44 44" stroke="#0D0D0E" strokeWidth="22" strokeLinecap="round" fill="none" />
       </svg>
+      )}
       <p className="font-display text-2xl font-extrabold uppercase leading-none">
         RoneCrew <span className="text-accent">Tatoo</span>
       </p>
@@ -64,14 +72,6 @@ export function TabsLayout({ tabs, admin }: { tabs: Tab[]; admin?: boolean }) {
         <div className="mt-auto flex flex-col gap-1">
           {admin ? (
             <>
-              <NavLink
-                to="/admin/feedback"
-                className={({ isActive }) =>
-                  `flex min-h-[48px] items-center gap-3 rounded-2xl px-4 text-base font-medium ${isActive ? 'bg-tint2 text-accent' : 'text-soft hover:bg-surface'}`
-                }
-              >
-                <MessageSquareHeart size={22} /> Feedback
-              </NavLink>
               <NavLink
                 to="/admin/config"
                 className={({ isActive }) =>

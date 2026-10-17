@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CalendarDays, ChevronRight, MapPin, Search } from 'lucide-react';
+import { CalendarDays, ChevronRight, MapPin, MessageSquareHeart, Search, Star } from 'lucide-react';
 import { useConfig } from '../../config';
 import Social, { socialLinks } from './Social';
 import { photoUrl, useApi, type Artist, type Booking, type GalleryPhoto } from '../../api';
@@ -64,11 +64,6 @@ export default function Home() {
           <Link to="/artistas" className="chip chip-on">
             Todos
           </Link>
-          {artists.data.styles.map((s) => (
-            <Link key={s} to={`/artistas?style=${encodeURIComponent(s)}`} className="chip">
-              {s}
-            </Link>
-          ))}
         </div>
       )}
 
@@ -96,18 +91,6 @@ export default function Home() {
         </div>
       )}
 
-      {artists.data && artists.data.styles.length > 0 && (
-        <section className="mt-8">
-          <h2 className="h2 mb-4">Estilos populares</h2>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {artists.data.styles.slice(0, 4).map((s) => (
-              <Link key={s} to={`/artistas?style=${encodeURIComponent(s)}`} className="stripes flex aspect-[4/3] items-end rounded-[18px] border border-line p-4 transition active:scale-[0.98]">
-                <span className="font-display text-2xl font-bold uppercase leading-none">{s}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       {gallery.data && gallery.data.photos.length > 0 && (
         <section className="mt-8">
@@ -143,6 +126,30 @@ export default function Home() {
         </div>
         {artists.data && featured.length === 0 && <p className="text-muted">Nenhum artista disponível no momento.</p>}
       </section>
+
+      <Link to="/perfil/feedback" className="card mt-8 flex items-center gap-4 p-5 transition active:scale-[0.99]">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-tint2 text-accent">
+          <MessageSquareHeart size={24} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-lg font-bold">Deixe seu feedback</span>
+          <span className="block text-base text-muted">Elogio, sugestão ou reclamação: conte pra gente.</span>
+        </span>
+        <ChevronRight size={22} className="shrink-0 text-muted" />
+      </Link>
+
+      {config?.googleReviewUrl && (
+        <a href={config.googleReviewUrl} target="_blank" rel="noreferrer" className="card mt-3 flex items-center gap-4 p-5 transition active:scale-[0.99]">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-tint2 text-accent">
+            <Star size={24} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-bold">Avalie no Google</span>
+            <span className="block text-base text-muted">Gostou do estúdio? Deixe sua avaliação.</span>
+          </span>
+          <ChevronRight size={22} className="shrink-0 text-muted" />
+        </a>
+      )}
 
       {config && (
         <section className="card mt-8 p-5">

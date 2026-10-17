@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Pencil, Plus, Tag } from 'lucide-react';
-import { api, useApi, type Artist, type Service } from '../../api';
+import { api, serviceUrl, useApi, type Artist, type Service } from '../../api';
 import { reloadConfig, useConfig } from '../../config';
-import { Checkbox, Empty, ErrorBox, Field, FormError, Loading, PageHead, ServiceIcon, SERVICE_ICON_KEYS, Sheet, Switch, toast } from '../../ui';
-import { brl, duration, firstName, moneyInput, parseMoney, priceFrom } from '../../util';
+import { Checkbox, Empty, ErrorBox, Field, FormError, Loading, PageHead, ServiceIcon, Sheet, Switch, toast } from '../../ui';
+import { brl, duration, firstName, moneyInput, parseMoney, priceFrom, squareImage } from '../../util';
 
 type Form = { name: string; description: string; price: string; durationMin: string; icon: string; active: boolean; artistIds: string[] };
 const blank: Form = { name: '', description: '', price: '', durationMin: '60', icon: 'pen', active: true, artistIds: [] };
@@ -19,9 +19,24 @@ export default function Services() {
   const [dep, setDep] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  // Foto escolhida (ainda não enviada) ou marcada para remoção.
+  const [newPhoto, setNewPhoto] = useState<string | null>(null);
+  const [dropPhoto, setDropPhoto] = useState(false);
+
+  async function pickPhoto(file?: File) {
+    if (!file) return;
+    try {
+      setNewPhoto(await squareImage(file, 512));
+      setDropPhoto(false);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
 
   useEffect(() => {
     setErr('');
+    setNewPhoto(null);
+    setDropPhoto(false);
     if (editing === 'new') setF(blank);
     else if (editing)
       setF({
@@ -53,8 +68,11 @@ export default function Services() {
     setErr('');
     try {
       const body = { ...f, priceCents, durationMin: Number(f.durationMin) };
-      if (editing === 'new') await api.post('/admin/services', body);
+      let id = editing !== 'new' && editing ? editing.id : '';
+      if (editing === 'new') id = (await api.post<{ service: Service }>('/admin/services', body)).service.id;
       else if (editing) await api.put(`/admin/services/${editing.id}`, body);
+      if (id && newPhoto) await api.post(`/admin/services/${id}/photo`, { image: newPhoto });
+      else if (id && dropPhoto) await api.del(`/admin/services/${id}/photo`);
       toast('Serviço salvo');
       setEditing(null);
       reload();
@@ -132,7 +150,7 @@ export default function Services() {
             onKeyDown={(e) => e.key === 'Enter' && setEditing(s)}
             className="card flex cursor-pointer items-center gap-3 p-4 transition active:scale-[0.99] min-[380px]:gap-4 min-[380px]:p-5 sm:p-6"
           >
-            <ServiceIcon icon={s.icon} active={s.active} />
+            <ServiceIcon icon={s.icon} active={s.active} photo={serviceUrl(s)} />
             <div className="min-w-0 flex-1">
               <p className={`text-lg font-bold ${s.active ? '' : 'text-soft'}`}>{s.name}</p>
               <p className="text-base text-muted">
@@ -171,13 +189,37 @@ export default function Services() {
             </Field>
           </div>
           <div>
-            <span className="label">Ícone</span>
-            <div className="flex flex-wrap gap-2">
-              {SERVICE_ICON_KEYS.map((k) => (
-                <button key={k} type="button" aria-label={`Ícone ${k}`} aria-pressed={f.icon === k} onClick={() => setF({ ...f, icon: k })} className={`rounded-[16px] border-2 ${f.icon === k ? 'border-accent' : 'border-transparent'}`}>
-                  <ServiceIcon icon={k} size="sm" />
+            <span className="label">Foto</span>
+            <div className="flex items-center gap-4">
+              <ServiceIcon
+                icon={f.icon}
+                size="sm"
+                photo={newPhoto || (dropPhoto || editing === 'new' || !editing ? undefined : serviceUrl(editing))}
+              />
+              <label className="btn-secondary cursor-pointer">
+                {newPhoto || (editing && editing !== 'new' && editing.photoVersion && !dropPhoto) ? 'Trocar foto' : 'Escolher foto'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    pickPhoto(e.target.files?.[0]);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+              {(newPhoto || (editing && editing !== 'new' && editing.photoVersion && !dropPhoto)) && (
+                <button
+                  type="button"
+                  className="text-base text-accent"
+                  onClick={() => {
+                    setNewPhoto(null);
+                    setDropPhoto(true);
+                  }}
+                >
+                  Remover
                 </button>
-              ))}
+              )}
             </div>
           </div>
           <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface2 px-4 py-3">

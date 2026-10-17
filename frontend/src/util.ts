@@ -97,9 +97,9 @@ export function parseMoney(v: string): number | null {
 export const moneyInput = (cents: number) => (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 /** Reduz a imagem no navegador (máx. 1280 px, JPEG) antes de enviar. */
-export function resizeImage(file: File, max = 1280): Promise<string> {
+export function resizeImage(file: File, max = 1280, type = 'image/jpeg'): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) return reject(new Error('Escolha uma imagem'));
+    if (file.type && !file.type.startsWith('image/')) return reject(new Error('Escolha uma imagem'));
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
@@ -109,7 +109,7 @@ export function resizeImage(file: File, max = 1280): Promise<string> {
       canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
+      resolve(canvas.toDataURL(type, 0.82));
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -122,7 +122,7 @@ export function resizeImage(file: File, max = 1280): Promise<string> {
 /** Recorta o centro da imagem em quadrado (avatar), em JPEG. */
 export function squareImage(file: File, size = 512): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) return reject(new Error('Escolha uma imagem'));
+    if (file.type && !file.type.startsWith('image/')) return reject(new Error('Escolha uma imagem'));
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
@@ -148,3 +148,21 @@ export const waLink = (phone: string, text = '') => {
   if (d.length <= 11) d = `55${d}`;
   return `https://wa.me/${d}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
 };
+
+/** Agrupa dias seguidos com o mesmo expediente: "Seg a Sáb: 09:00 às 18:00". */
+export function scheduleLines(schedule: { open: boolean; from: string; to: string }[]): string[] {
+  const short = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  const lines: string[] = [];
+  for (let i = 0; i < order.length; ) {
+    const d = schedule[order[i]];
+    let j = i;
+    while (j + 1 < order.length && JSON.stringify(schedule[order[j + 1]]) === JSON.stringify(d)) j++;
+    if (d.open) {
+      const days = i === j ? short[order[i]] : `${short[order[i]]} a ${short[order[j]]}`;
+      lines.push(`${days}: ${d.from} às ${d.to}`);
+    }
+    i = j + 1;
+  }
+  return lines;
+}

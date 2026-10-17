@@ -19,6 +19,7 @@ import {
   oneOf,
   image,
   getSettings,
+  checkSchedule,
   url,
   formatPhone,
   ACTIVE_STATUSES,
@@ -314,6 +315,7 @@ const ICONS = ['pen', 'diamond', 'eye', 'refresh', 'ring', 'chat', 'droplet', 's
 
 admin.get('/services', wrap(async (_req, res) => {
   const services = await prisma.service.findMany({
+    omit: { photo: true },
     include: { artists: { where: { archived: false }, select: { id: true, name: true } } },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   });
@@ -342,6 +344,7 @@ admin.post('/services', wrap(async (req, res) => {
   const max = await prisma.service.aggregate({ _max: { sortOrder: true } });
   const service = await prisma.service.create({
     data: { ...data, sortOrder: (max._max.sortOrder ?? 0) + 1, artists: { connect: await artistIds(req.body.artistIds) } },
+    omit: { photo: true },
   });
   res.status(201).json({ service });
 }));
@@ -351,12 +354,29 @@ admin.put('/services/:id', wrap(async (req, res) => {
   const service = await prisma.service.update({
     where: { id: req.params.id },
     data: { ...data, artists: { set: await artistIds(req.body.artistIds) } },
+    omit: { photo: true },
   });
   res.json({ service });
 }));
 
+admin.post('/services/:id/photo', wrap(async (req, res) => {
+  const { mime, data } = image(req.body.image);
+  if (data.length > 600_000) throw new HttpError(413, 'Foto muito grande (máx. 600 KB)');
+  const s = await prisma.service.update({
+    where: { id: req.params.id },
+    data: { photo: data, photoMime: mime, photoVersion: { increment: 1 } },
+    select: { photoVersion: true },
+  });
+  res.json({ photoVersion: s.photoVersion });
+}));
+
+admin.delete('/services/:id/photo', wrap(async (req, res) => {
+  await prisma.service.update({ where: { id: req.params.id }, data: { photo: null, photoMime: '', photoVersion: 0 }, select: { id: true } });
+  res.json({ photoVersion: 0 });
+}));
+
 admin.patch('/services/:id/active', wrap(async (req, res) => {
-  const service = await prisma.service.update({ where: { id: req.params.id }, data: { active: req.body.active === true } });
+  const service = await prisma.service.update({ where: { id: req.params.id }, data: { active: req.body.active === true }, omit: { photo: true } });
   res.json({ service });
 }));
 
@@ -435,7 +455,8 @@ const SETTING_FIELDS = {
   phone: (v) => phone(v),
   whatsapp: (v) => phone(v),
   address: (v) => text(v, 'Endereço', { max: 200 }),
-  hours: (v) => text(v, 'Horário de funcionamento', { max: 300 }),
+  hours: (v) => text(v, 'Observação do horário', { max: 300 }),
+  schedule: (v) => checkSchedule(v),
   about: (v) => text(v, 'Sobre o estúdio', { max: 3000 }),
   instagram: handle,
   facebook: (v) => url(v, 'Facebook'),
@@ -464,6 +485,23 @@ const SETTING_FIELDS = {
   waNotifyStudio: (v) => String(v === true || v === 'true'),
   waReminders: (v) => String(v === true || v === 'true'),
 };
+
+admin.post('/logo', wrap(async (req, res) => {
+  const { mime, data } = image(req.body.image);
+  if (data.length > 600_000) throw new HttpError(413, 'Logo muito grande (máx. 600 KB)');
+  const cur = Number((await prisma.setting.findUnique({ where: { key: 'logoVersion' } }))?.value) || 0;
+  const version = String(cur + 1);
+  await prisma.$transaction([
+    prisma.setting.upsert({ where: { key: 'logo' }, update: { value: `data:${mime};base64,${data.toString('base64')}` }, create: { key: 'logo', value: `data:${mime};base64,${data.toString('base64')}` } }),
+    prisma.setting.upsert({ where: { key: 'logoVersion' }, update: { value: version }, create: { key: 'logoVersion', value: version } }),
+  ]);
+  res.json({ logoVersion: Number(version) });
+}));
+
+admin.delete('/logo', wrap(async (_req, res) => {
+  await prisma.setting.deleteMany({ where: { key: { in: ['logo', 'logoVersion'] } } });
+  res.json({ logoVersion: 0 });
+}));
 
 admin.put('/settings', wrap(async (req, res) => {
   const values = {};

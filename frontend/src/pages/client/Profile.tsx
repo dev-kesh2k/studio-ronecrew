@@ -122,7 +122,11 @@ export default function Profile() {
           <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface bg-accent text-bg">
             <Camera size={16} />
           </span>
-          <input type="file" accept="image/*" className="sr-only" onChange={(e) => changeAvatar(e.target.files?.[0])} />
+          <input type="file" accept="image/*" className="sr-only" onChange={(e) => {
+              changeAvatar(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
         </label>
         <button onClick={edit} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <span className="min-w-0 flex-1">

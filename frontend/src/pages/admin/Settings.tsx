@@ -1,11 +1,11 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronRight, LogOut, Send, User, XCircle } from 'lucide-react';
-import { api, useApi } from '../../api';
+import { api, API_BASE, useApi, type DaySchedule } from '../../api';
 import { useAuth } from '../../auth';
 import { reloadConfig } from '../../config';
 import { ErrorBox, Field, FormError, Loading, PageHead, PasswordInput, Radio, Switch, toast } from '../../ui';
-import { fmtDateTime, moneyInput, parseMoney } from '../../util';
+import { fmtDateTime, moneyInput, parseMoney, resizeImage } from '../../util';
 
 interface S {
   studioName: string;
@@ -14,6 +14,8 @@ interface S {
   whatsapp: string;
   address: string;
   hours: string;
+  schedule: DaySchedule[];
+  logoVersion: number;
   about: string;
   instagram: string;
   facebook: string;
@@ -68,6 +70,37 @@ function Section({ title, children, hint }: { title: string; children: ReactNode
       </div>
       {children}
     </section>
+  );
+}
+
+const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+function ScheduleEditor({ value, onChange }: { value: DaySchedule[]; onChange: (v: DaySchedule[]) => void }) {
+  const upd = (i: number, patch: Partial<DaySchedule>) => onChange(value.map((d, k) => (k === i ? { ...d, ...patch } : d)));
+  return (
+    <div className="grid gap-2">
+      {DAY_ORDER.map((i) => {
+        const d = value[i];
+        return (
+          <div key={i} className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex min-h-[44px] w-36 items-center gap-3">
+              <Switch checked={d.open} onChange={(v) => upd(i, { open: v })} label={DAY_NAMES[i]} />
+              <span className={d.open ? 'font-medium' : 'text-muted'}>{DAY_NAMES[i]}</span>
+            </div>
+            {d.open ? (
+              <div className="flex items-center gap-2">
+                <input type="time" className="input w-[7.5rem]" value={d.from} onChange={(e) => upd(i, { from: e.target.value })} aria-label={`Abre ${DAY_NAMES[i]}`} />
+                <span className="text-muted">às</span>
+                <input type="time" className="input w-[7.5rem]" value={d.to} onChange={(e) => upd(i, { to: e.target.value })} aria-label={`Fecha ${DAY_NAMES[i]}`} />
+              </div>
+            ) : (
+              <span className="text-muted">Fechado</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -130,6 +163,28 @@ export default function Settings() {
     }
   }
 
+  async function pickLogo(file?: File) {
+    if (!file) return;
+    try {
+      await api.post('/admin/logo', { image: await resizeImage(file, 512, 'image/png') });
+      await Promise.all([reloadConfig(), reload()]);
+      toast('Logo atualizada');
+    } catch (e2) {
+      toast((e2 as Error).message, true);
+    }
+  }
+
+  async function removeLogo() {
+    if (!confirm('Remover a logo?')) return;
+    try {
+      await api.del('/admin/logo');
+      await Promise.all([reloadConfig(), reload()]);
+      toast('Logo removida');
+    } catch (e2) {
+      toast((e2 as Error).message, true);
+    }
+  }
+
   async function clearToken() {
     if (!confirm('Remover o token do WhatsApp? As notificações param.')) return;
     try {
@@ -168,6 +223,30 @@ export default function Settings() {
 
       <form onSubmit={save} className="grid gap-6">
         <Section title="Estúdio">
+          <Field label="Logo do app" hint="Aparece no topo do app e na tela de login do estúdio.">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface2">
+                {s.logoVersion ? <img src={`${API_BASE}/logo?v=${s.logoVersion}`} alt="Logo" className="h-full w-full object-contain" /> : <span className="text-sm text-muted">Padrão</span>}
+              </div>
+              <label className="btn-secondary cursor-pointer">
+                {s.logoVersion ? 'Trocar logo' : 'Enviar logo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    pickLogo(e.target.files?.[0]);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+              {s.logoVersion > 0 && (
+                <button type="button" className="text-base text-accent" onClick={removeLogo}>
+                  Remover
+                </button>
+              )}
+            </div>
+          </Field>
           <Field label="Nome do estúdio">
             <input className="input" maxLength={60} value={f.studioName} onChange={(e) => set('studioName', e.target.value)} required />
           </Field>
@@ -188,8 +267,11 @@ export default function Settings() {
           <Field label="Sobre o estúdio">
             <textarea className="input min-h-[120px] resize-y" maxLength={3000} value={f.about} onChange={(e) => set('about', e.target.value)} placeholder="Quem somos, estilos, experiência…" />
           </Field>
-          <Field label="Horário de funcionamento">
-            <textarea className="input min-h-[70px] resize-y" maxLength={300} value={f.hours} onChange={(e) => set('hours', e.target.value)} placeholder="Seg a Sáb, das 9h às 18h" />
+          <Field label="Horário de atendimento" hint="Dias e faixa de horário em que os clientes podem agendar (a sessão começa de hora em hora dentro da faixa).">
+            <ScheduleEditor value={f.schedule} onChange={(v) => set('schedule', v)} />
+          </Field>
+          <Field label="Observação do horário (opcional)">
+            <textarea className="input min-h-[70px] resize-y" maxLength={300} value={f.hours} onChange={(e) => set('hours', e.target.value)} placeholder="Ex.: feriados sob consulta" />
           </Field>
           <Field label="Endereço completo" hint="Usado no mapa: rua, número, bairro, cidade">
             <input className="input" maxLength={200} value={f.address} onChange={(e) => set('address', e.target.value)} />

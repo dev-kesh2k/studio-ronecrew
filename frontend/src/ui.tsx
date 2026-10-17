@@ -132,9 +132,10 @@ const SERVICE_ICONS: Record<string, LucideIcon> = {
 };
 export const SERVICE_ICON_KEYS = Object.keys(SERVICE_ICONS);
 
-export function ServiceIcon({ icon, active = true, size = 'md' }: { icon: string; active?: boolean; size?: 'sm' | 'md' }) {
+export function ServiceIcon({ icon, active = true, size = 'md', photo }: { icon: string; active?: boolean; size?: 'sm' | 'md'; photo?: string }) {
   const I = SERVICE_ICONS[icon] || Spline;
   const box = size === 'sm' ? 'h-12 w-12 rounded-xl' : 'h-12 w-12 rounded-[14px] min-[380px]:h-14 min-[380px]:w-14';
+  if (photo) return <img src={photo} alt="" className={`shrink-0 bg-surface2 object-cover ${box} ${active ? '' : 'opacity-50'}`} />;
   return (
     <div className={`flex shrink-0 items-center justify-center ${box} ${active ? 'stripes text-accent' : 'bg-surface2 text-muted'}`}>
       <I size={24} fill={icon === 'diamond' && active ? 'currentColor' : 'none'} />

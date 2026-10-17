@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Award, ChevronLeft, Heart, ImageOff } from 'lucide-react';
-import { apiUrl, avatarUrl, photoUrl, useApi, type Artist } from '../../api';
+import { apiUrl, avatarUrl, photoUrl, serviceUrl, useApi, type Artist } from '../../api';
 import { getFavorites, toggleFavorite } from '../../client';
 import { FullPage } from '../../layout';
 import { Avatar, ErrorBox, Lightbox, Loading, ServiceIcon, Stars, toast } from '../../ui';
@@ -124,7 +124,7 @@ export default function ArtistProfile() {
           {a.services.length === 0 && <p className="p-4 text-muted">Nenhum serviço disponível.</p>}
           {a.services.map((s) => (
             <div key={s.id} className="flex items-center gap-4 p-4">
-              <ServiceIcon icon={s.icon} size="sm" />
+              <ServiceIcon icon={s.icon} size="sm" photo={serviceUrl(s)} />
               <div className="min-w-0 flex-1">
                 <p className="break-words font-bold">{s.name}</p>
                 <p className="text-sm text-muted">Cerca de {duration(s.durationMin)}</p>
