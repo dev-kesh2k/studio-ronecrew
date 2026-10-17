@@ -103,6 +103,11 @@ export default function BookPayment() {
       return;
     }
     setPhoneErr('');
+    if (!name.trim()) {
+      setError('Informe seu nome');
+      document.getElementById('nome')?.focus();
+      return;
+    }
     setBusy(true);
     try {
       const body: Record<string, unknown> = { artistId, serviceId, date, time, notes, clientName: name, clientPhone: phone, paymentMethod: free ? 'studio' : method };
@@ -149,10 +154,12 @@ export default function BookPayment() {
                 <span className="min-w-0 text-right font-medium">{v}</span>
               </div>
             ))}
-            <div className="flex items-center justify-between gap-4 px-5 py-4">
-              <span className="font-bold">Sinal</span>
-              <span className="font-display text-2xl font-extrabold text-accent">{brl(deposit)}</span>
-            </div>
+            {!free && (
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <span className="font-bold">Sinal</span>
+                <span className="font-display text-2xl font-extrabold text-accent">{brl(deposit)}</span>
+              </div>
+            )}
           </section>
 
           {!free && (
@@ -182,8 +189,8 @@ export default function BookPayment() {
                 />
               </Field>
               {phoneErr && <FormError message={phoneErr} />}
-              <Field label="Nome (opcional)">
-                <input className="input" autoComplete="name" maxLength={100} placeholder="Como o estúdio te chama" value={name} onChange={(e) => setName(e.target.value)} />
+              <Field label="Nome *">
+                <input id="nome" className="input" autoComplete="name" maxLength={100} placeholder="Como o estúdio te chama" value={name} onChange={(e) => setName(e.target.value)} required />
               </Field>
             </div>
           </section>

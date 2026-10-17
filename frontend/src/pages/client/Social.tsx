@@ -1,5 +1,7 @@
-import { Facebook, Globe, Instagram, MessageCircle, Music2, Youtube, type LucideIcon } from 'lucide-react';
+import type { ComponentType } from 'react';
+import { Facebook, Globe, Music2, Youtube } from 'lucide-react';
 import type { Config } from '../../api';
+import { InstagramLogo, WhatsAppLogo } from '../../brand-icons';
 import { waLink } from '../../util';
 
 interface Link {
@@ -7,18 +9,18 @@ interface Link {
   label: string;
   handle: string;
   href: string;
-  icon: LucideIcon;
+  icon: ComponentType<{ size?: number | string }>;
 }
 
 /** Redes do estúdio cadastradas em Configurações (Instagram e TikTok pelo @; os outros por link). */
 export function socialLinks(c: Config): Link[] {
   const at = (v: string) => v.replace(/^@/, '').replace(/^https?:\/\/(www\.)?(instagram|tiktok)\.com\/@?/i, '').replace(/\/.*$/, '');
   const list: Link[] = [];
-  if (c.instagram) list.push({ key: 'ig', label: 'Instagram', handle: `@${at(c.instagram)}`, href: `https://instagram.com/${at(c.instagram)}`, icon: Instagram });
+  if (c.instagram) list.push({ key: 'ig', label: 'Instagram', handle: `@${at(c.instagram)}`, href: `https://instagram.com/${at(c.instagram)}`, icon: InstagramLogo });
   if (c.tiktok) list.push({ key: 'tt', label: 'TikTok', handle: `@${at(c.tiktok)}`, href: `https://www.tiktok.com/@${at(c.tiktok)}`, icon: Music2 });
   if (c.facebook) list.push({ key: 'fb', label: 'Facebook', handle: c.facebook.replace(/^https?:\/\/(www\.)?/, ''), href: c.facebook, icon: Facebook });
   if (c.youtube) list.push({ key: 'yt', label: 'YouTube', handle: c.youtube.replace(/^https?:\/\/(www\.)?/, ''), href: c.youtube, icon: Youtube });
-  if (c.whatsapp) list.push({ key: 'wa', label: 'WhatsApp', handle: c.whatsapp, href: waLink(c.whatsapp), icon: MessageCircle });
+  if (c.whatsapp) list.push({ key: 'wa', label: 'WhatsApp', handle: c.whatsapp, href: waLink(c.whatsapp), icon: WhatsAppLogo });
   if (c.website) list.push({ key: 'web', label: 'Site', handle: c.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''), href: c.website, icon: Globe });
   return list;
 }

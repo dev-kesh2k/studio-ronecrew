@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CalendarX, ChevronLeft, ChevronRight } from 'lucide-react';
-import { api, useApi, type Artist, type Service, type Slot } from '../../api';
+import { api, serviceUrl, useApi, type Artist, type Service, type Slot } from '../../api';
 import { useConfig } from '../../config';
 import { FullPage } from '../../layout';
 import { Empty, ErrorBox, Loading, PageHead, Radio, ServiceIcon, Stepper } from '../../ui';
@@ -47,7 +47,7 @@ export function BookService() {
               onClick={() => setSelected(s.id)}
               className={`flex items-center gap-4 rounded-[20px] border p-4 text-left transition active:scale-[0.99] ${on ? 'border-accent bg-tint' : 'border-line bg-surface'}`}
             >
-              <ServiceIcon icon={s.icon} />
+              <ServiceIcon icon={s.icon} photo={serviceUrl(s)} />
               <div className="min-w-0 flex-1">
                 <p className="text-lg font-bold">{s.name}</p>
                 {s.description && <p className="text-sm text-muted">{s.description}</p>}
@@ -64,7 +64,7 @@ export function BookService() {
   );
 }
 
-function Calendar({ today, value, onChange }: { today: string; value: string; onChange: (d: string) => void }) {
+function Calendar({ today, value, onChange, schedule }: { today: string; value: string; onChange: (d: string) => void; schedule: { open: boolean }[] }) {
   const [month, setMonth] = useState((value || today).slice(0, 7));
   const [y, m] = month.split('-').map(Number);
   const first = `${month}-01`;
@@ -104,7 +104,7 @@ function Calendar({ today, value, onChange }: { today: string; value: string; on
         ))}
         {Array.from({ length: days }).map((_, i) => {
           const day = `${month}-${String(i + 1).padStart(2, '0')}`;
-          const disabled = day < today || day > max || weekdayOf(day) === 0;
+          const disabled = day < today || day > max || !schedule[weekdayOf(day)]?.open;
           const sel = day === value;
           const isToday = day === today;
           return (
@@ -187,6 +187,7 @@ export function BookDate() {
       <div className="grid gap-6 md:grid-cols-2">
         <Calendar
           today={config.today}
+          schedule={config.schedule}
           value={date}
           onChange={(d) => {
             setDate(d);

@@ -7,7 +7,9 @@ export default function Help() {
   const config = useConfig();
   const deposit = config ? brl(config.depositCents) : 'o sinal';
   const FAQ = [
-    { q: 'Como funciona o sinal?', a: `Para garantir o horário você paga ${deposit} de sinal, que é descontado do valor final da sessão. Se preferir, escolha "Pagar no estúdio": a solicitação passa pela aprovação da equipe.` },
+    ...(config?.depositCents
+      ? [{ q: 'Como funciona o sinal?', a: `Para garantir o horário você paga ${deposit} de sinal, que é descontado do valor final da sessão. Se preferir, escolha "Pagar no estúdio": a solicitação passa pela aprovação da equipe.` }]
+      : []),
     { q: 'O preço é fechado?', a: 'Os valores são "a partir de". O preço final depende do tamanho, local do corpo e detalhes do desenho, e é combinado com o artista.' },
     { q: 'Como vejo meus agendamentos?', a: 'Não precisa de cadastro: em Agenda, informe o mesmo celular usado no agendamento. Ele fica salvo neste aparelho para as próximas vezes.' },
     { q: 'Posso cancelar ou remarcar?', a: 'Sim. Em Agenda, abra o agendamento e toque em "Cancelar". Se o sinal já foi pago, combine a remarcação com o estúdio.' },

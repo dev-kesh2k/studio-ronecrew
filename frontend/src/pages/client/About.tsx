@@ -1,6 +1,7 @@
 import { Clock, MapPin, Navigation, Phone } from 'lucide-react';
 import { useConfig } from '../../config';
 import { Loading, PageHead } from '../../ui';
+import { scheduleLines } from '../../util';
 import Social from './Social';
 
 /** Sobre o estúdio: texto, horário, endereço com mapa e redes sociais. */
@@ -8,6 +9,7 @@ export default function About() {
   const c = useConfig();
   if (!c) return <Loading />;
   const q = encodeURIComponent(c.address);
+  const hours = [...scheduleLines(c.schedule), c.hours].filter(Boolean).join('\n');
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -19,14 +21,14 @@ export default function About() {
         <p className="card p-5 text-muted">Estúdio de tatuagem. Em breve mais informações por aqui.</p>
       )}
 
-      {(c.hours || c.phone) && (
+      {(hours || c.phone) && (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {c.hours && (
+          {hours && (
             <div className="card flex items-start gap-3 p-4">
               <Clock size={20} className="mt-0.5 shrink-0 text-accent" />
               <div className="min-w-0">
                 <p className="font-bold">Horário</p>
-                <p className="whitespace-pre-line text-soft">{c.hours}</p>
+                <p className="whitespace-pre-line text-soft">{hours}</p>
               </div>
             </div>
           )}

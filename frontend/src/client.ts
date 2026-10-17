@@ -4,7 +4,6 @@ import { useCallback, useState } from 'react';
 const PHONE_KEY = 'ronecrew:phone';
 const NAME_KEY = 'ronecrew:name';
 const FAV_KEY = 'ronecrew:favorites';
-const INTRO_KEY = 'ronecrew:intro';
 
 export const phoneDigits = (v: string) => {
   let d = v.replace(/\D/g, '');
@@ -77,5 +76,3 @@ export function deviceId() {
   return id;
 }
 
-export const introSeen = () => localStorage.getItem(INTRO_KEY) === '1';
-export const markIntroSeen = () => localStorage.setItem(INTRO_KEY, '1');

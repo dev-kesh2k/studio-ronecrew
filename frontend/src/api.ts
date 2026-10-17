@@ -63,6 +63,9 @@ export const photoUrl = (id: string) => `${API_BASE}/photos/${id}`;
 export const avatarUrl = (a: { id: string; avatarVersion: number | null; photos?: string[] }) =>
   a.avatarVersion ? `${API_BASE}/artists/${a.id}/avatar?v=${a.avatarVersion}` : a.photos?.[0] ? photoUrl(a.photos[0]) : undefined;
 
+/** Foto do serviço (undefined = usa o ícone). */
+export const serviceUrl = (s: { id: string; photoVersion?: number }) => (s.photoVersion ? `${API_BASE}/services/${s.id}/photo?v=${s.photoVersion}` : undefined);
+
 export interface GalleryPhoto {
   id: string;
   createdAt: string;
@@ -119,6 +122,13 @@ export interface User {
   createdAt: string;
 }
 
+/** Expediente de um dia da semana (índice 0 = domingo). */
+export interface DaySchedule {
+  open: boolean;
+  from: string;
+  to: string;
+}
+
 export interface Config {
   studioName: string;
   depositCents: number;
@@ -126,6 +136,8 @@ export interface Config {
   whatsapp: string;
   address: string;
   hours: string;
+  schedule: DaySchedule[];
+  logoVersion: number;
   about: string;
   instagram: string;
   facebook: string;
@@ -146,6 +158,7 @@ export interface ServiceLite {
   priceCents: number;
   durationMin: number;
   icon: string;
+  photoVersion?: number;
   active: boolean;
 }
 
@@ -174,6 +187,7 @@ export interface Service {
   priceCents: number;
   durationMin: number;
   icon: string;
+  photoVersion?: number;
   active: boolean;
   artists?: { id: string; name: string }[];
 }

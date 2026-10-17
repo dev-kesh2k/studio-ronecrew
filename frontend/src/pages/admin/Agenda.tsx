@@ -90,7 +90,7 @@ export default function Agenda() {
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2.5" role="tablist" aria-label="Dias da semana">
         {week.map((d) => {
           const sel = d === day;
-          const closed = weekdayOf(d) === 0;
+          const closed = !config.schedule[weekdayOf(d)]?.open;
           const n = countByDay(d);
           return (
             <button
@@ -148,7 +148,7 @@ export default function Agenda() {
         {bookings.data && daySessions.length === 0 && (
           <div className="card flex items-center gap-3 p-5 text-muted">
             <CalendarOff size={22} className="shrink-0" />
-            {weekdayOf(day) === 0 ? 'Domingo: estúdio fechado.' : `Nenhuma sessão em ${fmtDate(day)}.`}
+            {!config.schedule[weekdayOf(day)]?.open ? 'Estúdio fechado nesse dia.' : `Nenhuma sessão em ${fmtDate(day)}.`}
           </div>
         )}
         <div className="grid gap-3 lg:grid-cols-2">
@@ -162,7 +162,7 @@ export default function Agenda() {
       <NewBookingSheet
         open={newOpen}
         onClose={() => setNewOpen(false)}
-        defaultDate={day < today || weekdayOf(day) === 0 ? today : day}
+        defaultDate={day < today || !config.schedule[weekdayOf(day)]?.open ? today : day}
         onCreated={(b) => {
           setDay(b.date);
           reloadAll();

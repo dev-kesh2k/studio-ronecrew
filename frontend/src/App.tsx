@@ -1,10 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth';
-import { introSeen } from './client';
 import { ADMIN_TABS, CLIENT_TABS, TabsLayout } from './layout';
 import { Loading, Toaster } from './ui';
-import Welcome from './pages/auth/Welcome';
 import AdminLogin from './pages/auth/Login';
 import Home from './pages/client/Home';
 import Artists from './pages/client/Artists';
@@ -45,11 +43,6 @@ function RequireAdmin({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** Apresentação só na primeira visita; depois vai direto para o início. */
-function HomeOrIntro() {
-  const [seen, setSeen] = useState(introSeen);
-  return seen ? <Home /> : <Welcome onDone={() => setSeen(true)} />;
-}
 
 export default function App() {
   return (
@@ -59,7 +52,7 @@ export default function App() {
       <Routes>
         {/* Cliente: sem login, identificado pelo celular no agendamento */}
         <Route element={<TabsLayout tabs={CLIENT_TABS} />}>
-          <Route path="/" element={<HomeOrIntro />} />
+          <Route path="/" element={<Home />} />
           <Route path="/agenda" element={<Bookings />} />
           <Route path="/agenda/:id" element={<BookingDetail />} />
           <Route path="/artistas" element={<Artists />} />
