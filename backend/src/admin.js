@@ -179,7 +179,7 @@ admin.post('/bookings/:id/cancel', wrap(async (req, res) => {
 admin.get('/artists', wrap(async (_req, res) => {
   const from = weekStart(todayStr());
   const [artists, stats, week] = await Promise.all([
-    prisma.artist.findMany({ include: artistInclude(false), orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
+    prisma.artist.findMany({ where: { archived: false }, include: artistInclude(false), orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
     artistStats(),
     prisma.booking.groupBy({
       by: ['artistId'],
@@ -236,18 +236,39 @@ admin.patch('/artists/:id/available', wrap(async (req, res) => {
   res.json({ artist });
 }));
 
+/**
+ * Exclui da equipe. Sem histórico: apaga de vez. Com histórico: arquiva (some do app, mas os
+ * agendamentos e pagamentos antigos continuam com o nome do artista). Agendamentos futuros ativos bloqueiam.
+ */
 admin.delete('/artists/:id', wrap(async (req, res) => {
-  if (await prisma.booking.count({ where: { artistId: req.params.id } })) {
-    throw new HttpError(409, 'Artista tem agendamentos no histórico. Desative a disponibilidade em vez de excluir.');
+  const artist = await prisma.artist.findUnique({ where: { id: req.params.id }, select: { id: true, name: true, archived: true } });
+  if (!artist || artist.archived) throw new HttpError(404, 'Artista não encontrado');
+  const upcoming = await prisma.booking.count({ where: { artistId: artist.id, status: { in: ACTIVE_STATUSES }, date: { gte: todayStr() } } });
+  if (upcoming) {
+    throw new HttpError(
+      409,
+      `${artist.name} tem ${upcoming} ${upcoming === 1 ? 'agendamento futuro' : 'agendamentos futuros'}. Cancele ou remarque na Agenda antes de excluir.`,
+    );
   }
-  await prisma.artist.delete({ where: { id: req.params.id } });
-  res.json({ ok: true });
+  if (await prisma.booking.count({ where: { artistId: artist.id } })) {
+    await prisma.$transaction([
+      prisma.artistPhoto.deleteMany({ where: { artistId: artist.id } }),
+      prisma.artist.update({
+        where: { id: artist.id },
+        data: { archived: true, available: false, avatar: null, avatarMime: '', services: { set: [] } },
+        select: { id: true },
+      }),
+    ]);
+    return res.json({ ok: true, archived: true });
+  }
+  await prisma.artist.delete({ where: { id: artist.id } });
+  res.json({ ok: true, archived: false });
 }));
 
 admin.post('/artists/:id/photos', wrap(async (req, res) => {
   const { mime, data } = image(req.body.image);
   if (!(await prisma.artist.findUnique({ where: { id: req.params.id }, select: { id: true } }))) throw new HttpError(404, 'Artista não encontrado');
-  if ((await prisma.artistPhoto.count({ where: { artistId: req.params.id } })) >= 12) throw new HttpError(400, 'Limite de 12 fotos no portfólio');
+  if ((await prisma.artistPhoto.count({ where: { artistId: req.params.id } })) >= 30) throw new HttpError(400, 'Limite de 30 fotos no portfólio');
   const photo = await prisma.artistPhoto.create({ data: { artistId: req.params.id, mime, data }, select: { id: true } });
   res.status(201).json({ photo });
 }));
@@ -278,7 +299,7 @@ const ICONS = ['pen', 'diamond', 'eye', 'refresh', 'ring', 'chat', 'droplet', 's
 
 admin.get('/services', wrap(async (_req, res) => {
   const services = await prisma.service.findMany({
-    include: { artists: { select: { id: true, name: true } } },
+    include: { artists: { where: { archived: false }, select: { id: true, name: true } } },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   });
   res.json({ services, icons: ICONS });
@@ -286,7 +307,7 @@ admin.get('/services', wrap(async (_req, res) => {
 
 async function artistIds(v) {
   if (!Array.isArray(v)) return [];
-  const found = await prisma.artist.findMany({ where: { id: { in: v.map(String).slice(0, 50) } }, select: { id: true } });
+  const found = await prisma.artist.findMany({ where: { id: { in: v.map(String).slice(0, 50) }, archived: false }, select: { id: true } });
   return found.map((a) => ({ id: a.id }));
 }
 

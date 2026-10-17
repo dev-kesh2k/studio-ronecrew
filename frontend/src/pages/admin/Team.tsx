@@ -15,6 +15,7 @@ export default function Team() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const current = editing && editing !== 'new' ? data?.artists.find((a) => a.id === editing.id) || editing : null;
 
@@ -69,26 +70,36 @@ export default function Team() {
     }
   }
 
-  async function remove() {
-    if (!current || !confirm(`Excluir ${current.name}?`)) return;
+  async function remove(a: Artist) {
+    if (!confirm(`Excluir ${a.name} da equipe?\n\nEle(a) some do app e da galeria. Sessões já feitas continuam no histórico e no financeiro.`)) return;
     try {
-      await api.del(`/admin/artists/${current.id}`);
-      toast('Artista excluído');
+      await api.del(`/admin/artists/${a.id}`);
+      toast(`${a.name} excluído(a) da equipe`);
       setEditing(null);
       reload();
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, true);
     }
   }
 
-  async function addPhoto(file?: File) {
-    if (!file || !current) return;
+  async function addPhotos(files: FileList | null) {
+    if (!files?.length || !current) return;
+    setUploading(true);
+    let ok = 0;
     try {
-      await api.post(`/admin/artists/${current.id}/photos`, { image: await resizeImage(file, 1600) });
-      toast('Foto adicionada');
-      reload();
-    } catch (e) {
-      toast((e as Error).message, true);
+      for (const file of Array.from(files)) {
+        try {
+          await api.post(`/admin/artists/${current.id}/photos`, { image: await resizeImage(file, 1600) });
+          ok++;
+        } catch (e) {
+          toast((e as Error).message, true);
+          break;
+        }
+      }
+      if (ok) toast(ok === 1 ? 'Foto adicionada à galeria' : `${ok} fotos adicionadas à galeria`);
+      await reload();
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -170,9 +181,14 @@ export default function Team() {
                 <Star size={18} className="text-accent" fill="currentColor" />
                 {a.rating ? a.rating.toLocaleString('pt-BR', { minimumFractionDigits: 1 }) : '–'}
               </span>
-              <button className="ml-auto min-h-[44px] text-base font-bold text-accent" onClick={() => setEditing(a)}>
-                Editar
-              </button>
+              <span className="ml-auto flex items-center gap-1">
+                <button className="flex min-h-[44px] items-center gap-1.5 px-2 text-base text-muted" onClick={() => remove(a)} aria-label={`Excluir ${a.name}`}>
+                  <Trash2 size={18} /> <span className="hidden min-[400px]:inline">Excluir</span>
+                </button>
+                <button className="min-h-[44px] px-2 text-base font-bold text-accent" onClick={() => setEditing(a)}>
+                  Editar
+                </button>
+              </span>
             </div>
           </div>
         ))}
@@ -246,7 +262,8 @@ export default function Team() {
 
           {current && (
             <div>
-              <span className="label">Portfólio ({current.photos.length}/12)</span>
+              <span className="label">Galeria / portfólio ({current.photos.length}/30)</span>
+              <p className="mb-2 text-sm text-muted">Aparece na Galeria do app e no perfil. Dá para escolher várias fotos de uma vez.</p>
               <div className="grid grid-cols-4 gap-2">
                 {current.photos.map((p) => (
                   <div key={p} className="relative aspect-square overflow-hidden rounded-[14px] bg-surface2">
@@ -256,10 +273,20 @@ export default function Team() {
                     </button>
                   </div>
                 ))}
-                {current.photos.length < 12 && (
-                  <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-[14px] border border-dashed border-line2 text-sm text-muted">
-                    <ImagePlus size={22} /> Foto
-                    <input type="file" accept="image/*" className="sr-only" onChange={(e) => addPhoto(e.target.files?.[0])} />
+                {current.photos.length < 30 && (
+                  <label className={`flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-[14px] border border-dashed border-line2 text-sm text-muted ${uploading ? 'pointer-events-none opacity-50' : ''}`}>
+                    <ImagePlus size={22} /> {uploading ? 'Enviando…' : 'Fotos'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      aria-label="Adicionar fotos à galeria"
+                      onChange={(e) => {
+                        addPhotos(e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
                   </label>
                 )}
               </div>
@@ -271,7 +298,7 @@ export default function Team() {
             {busy ? 'Salvando…' : 'Salvar'}
           </button>
           {current && (
-            <button className="btn-danger" onClick={remove}>
+            <button className="btn-danger" onClick={() => remove(current)}>
               Excluir artista
             </button>
           )}

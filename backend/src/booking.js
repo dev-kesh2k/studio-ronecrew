@@ -49,7 +49,7 @@ export async function checkBookable({ artistId, serviceId, date, time }) {
   if (date === today && toMin(time) <= toMin(nowTime())) throw new HttpError(400, 'Esse horário já passou');
 
   const artist = await prisma.artist.findUnique({ where: { id: String(artistId || '') }, include: { services: { select: { id: true } } } });
-  if (!artist) throw new HttpError(404, 'Artista não encontrado');
+  if (!artist || artist.archived) throw new HttpError(404, 'Artista não encontrado');
   if (!artist.available) throw new HttpError(409, `${artist.name} não está disponível para agendamento`);
   const service = await prisma.service.findUnique({ where: { id: String(serviceId || '') } });
   if (!service || !service.active) throw new HttpError(404, 'Serviço não disponível');

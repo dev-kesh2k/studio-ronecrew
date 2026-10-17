@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Check,
   ChevronLeft,
+  ChevronRight,
   Diamond,
   Droplet,
   Eye,
@@ -282,6 +283,77 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
         </div>
         {children}
       </div>
+    </div>
+  );
+}
+
+// ---------- Visualizador de fotos ----------
+export function Lightbox({
+  urls,
+  index,
+  onIndex,
+  onClose,
+  caption,
+}: {
+  urls: string[];
+  index: number;
+  onIndex: (i: number) => void;
+  onClose: () => void;
+  caption?: ReactNode;
+}) {
+  const [touchX, setTouchX] = useState<number | null>(null);
+  const count = urls.length;
+  const go = (d: number) => count > 1 && onIndex((index + d + count) % count);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') go(1);
+      if (e.key === 'ArrowLeft') go(-1);
+    };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-black"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Foto ampliada"
+      onTouchStart={(e) => setTouchX(e.touches[0].clientX)}
+      onTouchEnd={(e) => {
+        if (touchX === null) return;
+        const dx = e.changedTouches[0].clientX - touchX;
+        if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+        setTouchX(null);
+      }}
+    >
+      <div className="flex items-center justify-between gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+        <span className="text-sm text-soft">{count > 1 ? `${index + 1} de ${count}` : ''}</span>
+        <button className="icon-btn" aria-label="Fechar" onClick={onClose}>
+          <X size={22} />
+        </button>
+      </div>
+      <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
+        <img src={urls[index]} alt="" className="h-full w-full object-contain" />
+        {count > 1 && (
+          <>
+            <button className="icon-btn absolute left-3 top-1/2 -translate-y-1/2 bg-bg/80" aria-label="Foto anterior" onClick={() => go(-1)}>
+              <ChevronLeft size={24} />
+            </button>
+            <button className="icon-btn absolute right-3 top-1/2 -translate-y-1/2 bg-bg/80" aria-label="Próxima foto" onClick={() => go(1)}>
+              <ChevronRight size={24} />
+            </button>
+          </>
+        )}
+      </div>
+      {caption && <div className="mx-auto w-full max-w-xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{caption}</div>}
     </div>
   );
 }
