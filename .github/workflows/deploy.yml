@@ -21,11 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # O Hub publica a partir da pasta do projeto no Criador de apps.
+      # Cópia de entrega: o Hub publica daqui e a pasta de trabalho do Criador não é tocada.
       - name: Sincronizar código com o Hub
         run: |
-          mkdir -p "/mnt/c/Hub/VPS-main/data/app-builder/projetos/$SLUG"
-          rsync -a --delete --exclude '.git' --exclude 'node_modules' --exclude 'dist'             ./ "/mnt/c/Hub/VPS-main/data/app-builder/projetos/$SLUG/"
+          mkdir -p "/mnt/c/Hub/VPS-main/data/app-builder/deploy/$SLUG"
+          rsync -a --delete --exclude '.git' --exclude 'node_modules' --exclude 'dist' \
+            ./ "/mnt/c/Hub/VPS-main/data/app-builder/deploy/$SLUG/"
 
       - name: Publicar no Hub
         env:
@@ -33,7 +34,10 @@ jobs:
         run: |
           # 409 = outro deploy ainda em andamento: espera e tenta de novo.
           for i in $(seq 1 30); do
-            code=$(curl -sS -o /tmp/hub-deploy-$SLUG.json -w '%{http_code}' -X POST               -H "x-deploy-token: $HUB_DEPLOY_TOKEN" -H 'Content-Type: application/json'               -d "{\"name\":\"$APP_NAME\"}"               "http://127.0.0.1:3001/api/aplicacoes/deploy-hook/$SLUG")
+            code=$(curl -sS -o /tmp/hub-deploy-$SLUG.json -w '%{http_code}' -X POST \
+              -H "x-deploy-token: $HUB_DEPLOY_TOKEN" -H 'Content-Type: application/json' \
+              -d "{\"name\":\"$APP_NAME\"}" \
+              "http://127.0.0.1:3001/api/aplicacoes/deploy-hook/$SLUG")
             cat /tmp/hub-deploy-$SLUG.json; echo
             [ "$code" = 200 ] && exit 0
             [ "$code" = 409 ] || exit 1
