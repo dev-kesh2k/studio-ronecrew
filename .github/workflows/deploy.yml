@@ -24,9 +24,9 @@ jobs:
       # Cópia de entrega: o Hub publica daqui e a pasta de trabalho do Criador não é tocada.
       - name: Sincronizar código com o Hub
         run: |
-          mkdir -p "/mnt/c/Hub/VPS-main/data/app-builder/deploy/$SLUG"
+          mkdir -p "/opt/hub/data/app-builder/deploy/$SLUG"
           rsync -a --delete --exclude '.git' --exclude 'node_modules' --exclude 'dist' \
-            ./ "/mnt/c/Hub/VPS-main/data/app-builder/deploy/$SLUG/"
+            ./ "/opt/hub/data/app-builder/deploy/$SLUG/"
 
       - name: Publicar no Hub
         env:
