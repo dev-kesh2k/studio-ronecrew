@@ -1,23 +1,23 @@
 name: Deploy
 
-# main -> produção (/studio-ronecrew/) · dev -> ambiente de testes (/studio-ronecrew-dev/)
+# main -> produção (/studio-ronecrew/). Não há ambiente de testes: todo push na main vai para o ar.
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   workflow_dispatch:
 
 env:
-  SLUG: ${{ github.ref_name == 'main' && 'studio-ronecrew' || 'studio-ronecrew-dev' }}
-  APP_NAME: ${{ github.ref_name == 'main' && 'Studio RoneCrew' || 'Studio RoneCrew Dev' }}
+  SLUG: studio-ronecrew
+  APP_NAME: Studio RoneCrew
 
 concurrency:
-  group: deploy-${{ github.ref_name }}
+  group: deploy-main
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: [self-hosted, hub]
-    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
