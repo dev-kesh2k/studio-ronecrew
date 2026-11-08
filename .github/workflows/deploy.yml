@@ -4,6 +4,11 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Só documentação: não precisa republicar o app.
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - 'docs/**'
   workflow_dispatch:
 
 env:
