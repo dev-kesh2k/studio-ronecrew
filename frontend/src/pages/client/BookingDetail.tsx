@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, ImagePlus, Star } from 'lucide-react';
+import { CalendarPlus, CheckCircle2, ImagePlus, Star } from 'lucide-react';
 import { api, API_BASE, fetchImageUrl, useApi, type Booking } from '../../api';
 import { useSavedPhone } from '../../client';
 import PhoneGate from './PhoneGate';
@@ -200,6 +200,11 @@ export default function BookingDetail() {
           <button className="btn-primary" onClick={() => setReviewOpen(true)}>
             <Star size={20} /> Avaliar sessão
           </button>
+        )}
+        {canCancel && (
+          <a className="btn-secondary" href={`${API_BASE}/bookings/${b.id}/calendar.ics?phone=${encodeURIComponent(phone)}`} download={`sessao-${b.date}.ics`}>
+            <CalendarPlus size={20} /> Adicionar ao calendário
+          </a>
         )}
         {canCancel && (
           <button className="btn-danger" onClick={() => setCancelOpen(true)}>
