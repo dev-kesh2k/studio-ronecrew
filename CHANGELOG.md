@@ -4,6 +4,9 @@ Mudanças relevantes do app, da mais nova para a mais antiga. Cada item é um pu
 
 ## 2026-11-15
 
+- **Novo:** cliente pode *Adicionar ao calendário* a própria sessão (.ics) (#26–#29)
+- **Novo:** Agenda do estúdio → botão para baixar as sessões do mês no Google Agenda (.ics) (#21–#25)
+- **Saúde:** /health testa o banco e responde 503 se o Postgres cair (#20)
 - Segurança: react-router v7 no frontend (corrige open redirect GHSA-wrjc-x8rr-h8h6) (#17)
 - Frontend: dependências atualizadas pelo npm audit (versões compatíveis) (#16)
 - Segurança: body-parser e qs atualizados no backend (npm audit) (#15)
