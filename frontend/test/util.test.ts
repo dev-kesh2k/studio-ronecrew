@@ -16,7 +16,8 @@ test('duration, priceFrom e weekStart', () => {
   assert.equal(duration(60), '1 h');
   assert.equal(duration(150), '2 h 30');
   assert.equal(priceFrom(0), 'Grátis');
-  assert.match(priceFrom(15000), /^a partir de R\$\s150,00$/);
+  assert.match(priceFrom(15000), /^a partir de R\$\s150$/);
+  assert.match(priceFrom(15050), /^a partir de R\$\s150,50$/);
   assert.equal(weekStart('2026-11-15'), '2026-11-09');
   assert.equal(weekStart('2026-11-16'), '2026-11-16');
 });
