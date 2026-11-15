@@ -104,6 +104,21 @@ export function limitLookup(ip, max = 60) {
   lookups.set(ip, list);
 }
 
+/** Apaga as listas vencidas dos limites (antes cada IP que passou ficava no mapa para sempre). */
+export function sweepLimits(maps = [attempts, lookups], now = Date.now()) {
+  let size = 0;
+  for (const map of maps) {
+    for (const [k, list] of map) {
+      const recent = list.filter((t) => now - t < WINDOW);
+      if (recent.length) map.set(k, recent);
+      else map.delete(k);
+    }
+    size += map.size;
+  }
+  return size;
+}
+setInterval(() => sweepLimits(), 10 * 60_000).unref();
+
 // ---------- Configurações do estúdio ----------
 /** Visíveis para o cliente (GET /config). */
 export const PUBLIC_SETTINGS = {
