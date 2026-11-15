@@ -1,5 +1,7 @@
 # Studio RoneCrew
 
+[![Testes](https://github.com/dev-kesh2k/studio-ronecrew/actions/workflows/ci.yml/badge.svg)](https://github.com/dev-kesh2k/studio-ronecrew/actions/workflows/ci.yml)
+
 App de agendamento do estúdio de tatuagem RoneCrew Tatoo (web e celular, instalável na Tela de Início).
 
 - **Cliente (sem login):** busca de artistas por nome/estilo, perfil do artista (portfólio, serviços, avaliações, favoritos salvos no aparelho), agendamento em 4 etapas (serviço → data → hora → detalhes e sinal) informando o **celular (obrigatório)** e o nome (opcional). Em "Agenda" o cliente informa o celular e vê seus agendamentos (próximos/anteriores/cancelados), cancela, avalia após a sessão e anexa referências. O celular fica salvo no aparelho.
@@ -30,3 +32,13 @@ App de agendamento do estúdio de tatuagem RoneCrew Tatoo (web e celular, instal
 
 ## Login inicial (estúdio)
 `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` do `backend/.env.example` (criado no primeiro start; também fica no Cofre do Hub). O catálogo inicial de artistas e serviços é criado uma vez e depois editado pelo painel.
+
+## Testes
+
+Testes do backend com o executor nativo do Node (`node:test`), sem banco e sem servidor rodando:
+
+```bash
+node --test backend/test/*.test.js
+```
+
+Cobrem as regras puras do backend (dates, schedule, validate). O GitHub Actions roda os mesmos testes em cada push e pull request (workflow `Testes`); mudanças só em `backend/test/` não republicam o app.
