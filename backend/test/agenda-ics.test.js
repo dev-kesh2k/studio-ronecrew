@@ -51,3 +51,15 @@ test('agendaIcs: pendentes como TENTATIVE e canceladas/recusadas fora', () => {
   assert.match(ics, /UID:a@ronecrew/);
   assert.match(ics, /STATUS:TENTATIVE/);
 });
+
+test('agendaIcs (cliente): título com artista e estúdio, endereço e sem telefone', () => {
+  const ics = agendaIcs([sessao({ clientPhone: '(45) 99999-8888', notes: 'braço' })], { studioName: 'RoneCrew', client: true, address: 'Rua A, 10' });
+  assert.match(ics, /SUMMARY:Fine line com Rone — RoneCrew/);
+  assert.match(ics, /LOCATION:Rua A\\, 10/);
+  assert.match(ics, /DESCRIPTION:Obs.: braço/);
+  assert.ok(!ics.includes('99999'));
+});
+
+test('agendaIcs (cliente): sem endereço não manda LOCATION', () => {
+  assert.ok(!agendaIcs([sessao({})], { client: true }).includes('LOCATION'));
+});
