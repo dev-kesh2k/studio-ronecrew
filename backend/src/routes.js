@@ -47,6 +47,7 @@ import {
 import { admin } from './admin.js';
 import { social, profilesByPhone, avatarOf } from './social.js';
 import { notifyClientWA, notifyStudioWA } from './whatsapp.js';
+import { agendaIcs } from './agenda-ics.js';
 
 export const api = express.Router();
 
@@ -257,6 +258,15 @@ api.get('/bookings/:id', wrap(async (req, res) => {
   limitLookup(`get:${req.ip}`);
   const b = await bookingForPhone(req.params.id, req.query.phone, { ...bookingInclude, references: { select: { id: true, note: true } } });
   res.json({ booking: clientView(b) });
+}));
+
+/** A sessão do cliente em .ics (link direto, com o celular como chave, igual às outras rotas do agendamento). */
+api.get('/bookings/:id/calendar.ics', wrap(async (req, res) => {
+  limitLookup(`ics:${req.ip}`);
+  const [b, settings] = await Promise.all([bookingForPhone(req.params.id, req.query.phone, bookingInclude), getSettings()]);
+  res.set('Content-Type', 'text/calendar; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="sessao-${b.date}.ics"`);
+  res.send(agendaIcs([b], { studioName: settings.studioName, client: true, address: settings.address }));
 }));
 
 api.post('/bookings/:id/cancel', wrap(async (req, res) => {
