@@ -1,5 +1,5 @@
 // Agenda do estúdio: expediente por dia da semana e horários livres (sem banco: testáveis).
-import { toMin, weekday } from './dates.js';
+import { addDays, isDay, toMin, weekday } from './dates.js';
 import { HttpError } from './validate.js';
 
 /** Horários de início possíveis (de hora em hora); o expediente de cada dia da semana vem das configurações. */
@@ -51,3 +51,24 @@ export const slotsOf = (schedule, date) => {
 };
 export const ACTIVE_STATUSES = ['requested', 'pending_deposit', 'confirmed'];
 export const BLOCKING_STATUSES = ['requested', 'pending_deposit', 'confirmed', 'completed'];
+
+/** A sessão (início + duração) bate com alguma já marcada no dia? */
+export const overlaps = (time, duration, list) => {
+  const s = toMin(time);
+  const e = s + duration;
+  return list.some((b) => {
+    const bs = toMin(b.time);
+    return s < bs + b.durationMin && bs < e;
+  });
+};
+
+/** Problema de data/hora de um novo agendamento (null = ok). `today`/`now` no fuso do estúdio. */
+export function slotProblem({ schedule, date, time, today, now }) {
+  if (!isDay(date)) return 'Data inválida';
+  if (date < today) return 'Não é possível agendar em datas passadas';
+  if (date > addDays(today, 365)) return 'Agende com no máximo 1 ano de antecedência';
+  if (!slotsOf(schedule, date).includes(time)) return 'O estúdio não atende nesse dia/horário';
+  if (date === today && toMin(time) <= toMin(now)) return 'Esse horário já passou';
+  return null;
+}
+
