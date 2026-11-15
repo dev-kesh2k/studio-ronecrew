@@ -40,24 +40,33 @@ export function addMinutes(day, time, min) {
   return { day: d.toISOString().slice(0, 10), time: d.toISOString().slice(11, 16) };
 }
 
-/** Calendário com uma sessão por evento; canceladas e recusadas ficam de fora. */
-export function agendaIcs(bookings, { studioName = 'Estúdio', tz = 'America/Sao_Paulo', now = new Date() } = {}) {
+/**
+ * Calendário com uma sessão por evento; canceladas e recusadas ficam de fora.
+ * `client`: versão do cliente (título com serviço, artista e estúdio; local = endereço do estúdio; sem telefone).
+ */
+export function agendaIcs(bookings, { studioName = 'Estúdio', tz = 'America/Sao_Paulo', now = new Date(), client = false, address = '' } = {}) {
   const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//RoneCrew//Agenda//PT-BR', 'CALSCALE:GREGORIAN', `X-WR-CALNAME:${icsText(studioName)}`, `X-WR-TIMEZONE:${tz}`];
   for (const b of bookings) {
     const status = STATUS[b.status];
     if (!status) continue;
     const end = addMinutes(b.date, b.time, b.durationMin || 60);
-    const desc = [b.clientPhone && `Telefone: ${b.clientPhone}`, b.notes && `Obs.: ${b.notes}`].filter(Boolean).join('\n');
+    const desc = client
+      ? [b.notes && `Obs.: ${b.notes}`].filter(Boolean).join('\n')
+      : [b.clientPhone && `Telefone: ${b.clientPhone}`, b.notes && `Obs.: ${b.notes}`].filter(Boolean).join('\n');
+    const summary = client
+      ? `${b.service?.name || 'Sessão'}${b.artist?.name ? ` com ${b.artist.name}` : ''} — ${studioName}`
+      : `${b.service?.name || 'Sessão'} — ${b.clientName}`;
+    const location = client ? address : b.artist?.name ? `Artista: ${b.artist.name}` : '';
     lines.push(
       'BEGIN:VEVENT',
       `UID:${b.id}@ronecrew`,
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=${tz}:${icsLocal(b.date, b.time)}`,
       `DTEND;TZID=${tz}:${icsLocal(end.day, end.time)}`,
-      `SUMMARY:${icsText(`${b.service?.name || 'Sessão'} — ${b.clientName}`)}`,
+      `SUMMARY:${icsText(summary)}`,
       `STATUS:${status}`,
-      ...(b.artist?.name ? [`LOCATION:${icsText(`Artista: ${b.artist.name}`)}`] : []),
+      ...(location ? [`LOCATION:${icsText(location)}`] : []),
       ...(desc ? [`DESCRIPTION:${icsText(desc)}`] : []),
       'END:VEVENT',
     );
