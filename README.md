@@ -39,6 +39,7 @@ Testes do backend com o executor nativo do Node (`node:test`), sem banco e sem s
 
 ```bash
 node --test backend/test/*.test.js
+node --test frontend/test/*.test.ts   # frontend (Node 22 roda o TypeScript direto)
 ```
 
-Cobrem as regras puras do backend (dates, schedule, validate). O GitHub Actions roda os mesmos testes em cada push e pull request (workflow `Testes`); mudanças só em `backend/test/` não republicam o app.
+Cobrem as regras puras do backend (dates, schedule, validate). O GitHub Actions roda os mesmos testes e um lint `no-undef` do backend em cada push e pull request (workflow `Testes`); mudanças só em `backend/test/` ou `frontend/test/` não republicam o app. Mais detalhes em [CONTRIBUTING.md](CONTRIBUTING.md).
