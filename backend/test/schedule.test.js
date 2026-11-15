@@ -45,3 +45,27 @@ test('status: os que bloqueiam a agenda incluem os ativos e os concluídos', () 
   assert.ok(BLOCKING_STATUSES.includes('completed'));
   assert.ok(!BLOCKING_STATUSES.includes('cancelled'));
 });
+
+test('overlaps: choque de horário entre sessões (fim exclusivo)', async () => {
+  const { overlaps } = await import('../src/schedule.js');
+  const dia = [{ time: '10:00', durationMin: 120 }];
+  assert.equal(overlaps('11:00', 60, dia), true);
+  assert.equal(overlaps('09:00', 90, dia), true);
+  assert.equal(overlaps('09:00', 60, dia), false);
+  assert.equal(overlaps('12:00', 60, dia), false);
+  assert.equal(overlaps('08:00', 300, dia), true);
+  assert.equal(overlaps('10:00', 60, []), false);
+});
+
+test('slotProblem: data e hora de um novo agendamento', async () => {
+  const { slotProblem } = await import('../src/schedule.js');
+  const base = { schedule: DEFAULT_SCHEDULE, today: '2026-11-16', now: '11:30' };
+  assert.equal(slotProblem({ ...base, date: '2026-11-17', time: '10:00' }), null);
+  assert.equal(slotProblem({ ...base, date: '2026-13-01', time: '10:00' }), 'Data inválida');
+  assert.equal(slotProblem({ ...base, date: '2026-11-15', time: '10:00' }), 'Não é possível agendar em datas passadas');
+  assert.match(slotProblem({ ...base, date: '2027-11-17', time: '10:00' }), /1 ano/);
+  assert.match(slotProblem({ ...base, date: '2026-11-22', time: '10:00' }), /não atende/); // domingo
+  assert.match(slotProblem({ ...base, date: '2026-11-17', time: '20:00' }), /não atende/); // fora do expediente
+  assert.equal(slotProblem({ ...base, date: '2026-11-16', time: '11:00' }), 'Esse horário já passou');
+  assert.equal(slotProblem({ ...base, date: '2026-11-16', time: '12:00' }), null);
+});
