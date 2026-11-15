@@ -19,7 +19,15 @@ export function parseSchedule(raw) {
 }
 /** Valida o que o admin enviou (7 dias, abre antes de fechar). */
 export function checkSchedule(v) {
-  const a = typeof v === 'string' ? JSON.parse(v) : v;
+  let a = v;
+  if (typeof v === 'string') {
+    try {
+      a = JSON.parse(v);
+    } catch {
+      // Texto que não é JSON é erro de quem enviou (400), não do servidor (500).
+      throw new HttpError(400, 'Horário de atendimento inválido');
+    }
+  }
   if (!Array.isArray(a) || a.length !== 7) throw new HttpError(400, 'Horário de atendimento inválido');
   const names = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
   const out = a.map((d, i) => {
