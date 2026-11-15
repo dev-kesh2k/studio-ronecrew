@@ -26,6 +26,7 @@ import {
   BLOCKING_STATUSES,
 } from './util.js';
 import { isConfigured, notifyClientWA, sendWhatsApp } from './whatsapp.js';
+import { agendaIcs } from './agenda-ics.js';
 import { checkBookable, createBooking, bookingInclude, serializeBooking, paidCents, artistInclude, artistStats, serializeArtist } from './booking.js';
 
 export const admin = express.Router();
@@ -82,6 +83,24 @@ admin.get('/bookings', wrap(async (req, res) => {
     orderBy: [{ date: 'asc' }, { time: 'asc' }],
   });
   res.json({ bookings: list.map(serializeBooking), today: todayStr() });
+}));
+
+/** Sessões do período em .ics (Google Agenda, calendário do celular). Padrão: mês atual. */
+admin.get('/agenda.ics', wrap(async (req, res) => {
+  const month = String(req.query.month || todayStr().slice(0, 7));
+  if (!isMonth(month)) throw new HttpError(400, 'Mês inválido');
+  const { from, to } = monthRange(month);
+  const [list, settings] = await Promise.all([
+    prisma.booking.findMany({
+      where: { date: { gte: from, lte: to }, status: { in: BLOCKING_STATUSES } },
+      include: bookingInclude,
+      orderBy: [{ date: 'asc' }, { time: 'asc' }],
+    }),
+    getSettings(),
+  ]);
+  res.set('Content-Type', 'text/calendar; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="agenda-${month}.ics"`);
+  res.send(agendaIcs(list, { studioName: settings.studioName }));
 }));
 
 admin.get('/requests', wrap(async (_req, res) => {
