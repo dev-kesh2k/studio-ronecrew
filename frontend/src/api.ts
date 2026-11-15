@@ -57,6 +57,28 @@ export async function fetchImageUrl(path: string): Promise<string> {
   return URL.createObjectURL(await res.blob());
 }
 
+/** Baixa um arquivo da API com o token (ex.: agenda .ics) e abre o "salvar como" do navegador. */
+export async function downloadFile(path: string, fallbackName: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).catch(() => {
+    throw new ApiError(0, 'Sem conexão com o servidor');
+  });
+  if (!res.ok) {
+    if (res.status === 401 && token) onUnauthorized();
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, data.error || `Erro ${res.status}`);
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const photoUrl = (id: string) => `${API_BASE}/photos/${id}`;
 
 /** Foto do artista: o avatar; sem avatar, a 1ª foto do portfólio; sem nenhuma, undefined (iniciais). */
