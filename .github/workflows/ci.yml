@@ -15,6 +15,6 @@ jobs:
         with:
           node-version: 22
       - name: Lint (variável sem declarar/importar)
-        run: npx --yes eslint@9 --config backend/eslint.config.js backend
+        run: cd backend && npx --yes eslint@9 .
       - name: Testes do backend
         run: node --test backend/test/*.test.js
