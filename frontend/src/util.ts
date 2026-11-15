@@ -86,9 +86,16 @@ export const METHOD: Record<string, string> = {
   studio: 'No estúdio',
 };
 
-/** Converte "350,00" / "350" em centavos. */
+/**
+ * Converte "350,00" / "1.234,56" / "350" em centavos. Sem vírgula, ponto com 1 ou 2 casas no fim é decimal
+ * ("350.50" = R$ 350,50; antes virava R$ 35.050,00) e com 3 casas é milhar ("1.234" = R$ 1.234,00).
+ */
 export function parseMoney(v: string): number | null {
-  const s = v.replace(/[^\d,.]/g, '').replace(/\./g, '').replace(',', '.');
+  let s = v.replace(/[^\d,.]/g, '');
+  if (!s.includes(',') && /\.\d{1,2}$/.test(s)) {
+    const i = s.lastIndexOf('.');
+    s = `${s.slice(0, i).replace(/\./g, '')}.${s.slice(i + 1)}`;
+  } else s = s.replace(/\./g, '').replace(',', '.');
   if (!s) return null;
   const n = Number(s);
   return Number.isFinite(n) ? Math.round(n * 100) : null;
