@@ -1,0 +1,18 @@
+name: Testes
+
+# Roda os testes do backend (node:test, sem dependências nem banco) em cada push e pull request.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Testes do backend
+        run: node --test backend/test/*.test.js
