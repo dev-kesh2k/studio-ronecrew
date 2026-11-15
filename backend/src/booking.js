@@ -8,18 +8,8 @@ import {
   todayStr,
   nowTime,
   toMin,
-  isDay,
-  addDays,
 } from './util.js';
-
-const overlaps = (time, duration, list) => {
-  const s = toMin(time);
-  const e = s + duration;
-  return list.some((b) => {
-    const bs = toMin(b.time);
-    return s < bs + b.durationMin && bs < e;
-  });
-};
+import { overlaps, slotProblem } from './schedule.js';
 
 /** Horários do dia para um artista/duração, marcando os indisponíveis. */
 export async function daySlots(artistId, date, durationMin) {
@@ -41,13 +31,8 @@ export async function daySlots(artistId, date, durationMin) {
 
 /** Valida artista/serviço/data/hora de um novo agendamento. */
 export async function checkBookable({ artistId, serviceId, date, time }) {
-  if (!isDay(date)) throw new HttpError(400, 'Data inválida');
-
-  const today = todayStr();
-  if (date < today) throw new HttpError(400, 'Não é possível agendar em datas passadas');
-  if (date > addDays(today, 365)) throw new HttpError(400, 'Agende com no máximo 1 ano de antecedência');
-  if (!slotsOf((await getSettings()).schedule, date).includes(time)) throw new HttpError(400, 'O estúdio não atende nesse dia/horário');
-  if (date === today && toMin(time) <= toMin(nowTime())) throw new HttpError(400, 'Esse horário já passou');
+  const problem = slotProblem({ schedule: (await getSettings()).schedule, date, time, today: todayStr(), now: nowTime() });
+  if (problem) throw new HttpError(400, problem);
 
   const artist = await prisma.artist.findUnique({ where: { id: String(artistId || '') }, include: { services: { select: { id: true } } } });
   if (!artist || artist.archived) throw new HttpError(404, 'Artista não encontrado');
