@@ -4,6 +4,8 @@ Mudanças relevantes do app, da mais nova para a mais antiga. Cada item é um pu
 
 ## 2026-11-15
 
+- **Correção:** valor digitado com ponto decimal ("350.50") agora vale R$ 350,50; antes virava R$ 35.050,00
+- **CI:** testes do frontend (TypeScript direto no Node 22) e lint no-undef do backend
 - **Novo:** cliente pode *Adicionar ao calendário* a própria sessão (.ics) (#26–#29)
 - **Novo:** Agenda do estúdio → botão para baixar as sessões do mês no Google Agenda (.ics) (#21–#25)
 - **Saúde:** /health testa o banco e responde 503 se o Postgres cair (#20)
