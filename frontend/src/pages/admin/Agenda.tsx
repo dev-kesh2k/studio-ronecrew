@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarOff, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { api, useApi, type Booking } from '../../api';
+import { CalendarArrowDown, CalendarOff, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { api, downloadFile, useApi, type Booking } from '../../api';
 import { useConfig } from '../../config';
 import { ErrorBox, Field, FormError, Loading, PageHead, Sheet, toast } from '../../ui';
 import { addDays, dayNum, fmtDate, fmtShort, monthShort, WEEKDAYS_SHORT, weekdayOf, weekStart } from '../../util';
@@ -70,9 +70,22 @@ export default function Agenda() {
       <PageHead
         title="Agenda"
         action={
-          <button className="btn-pill" onClick={() => setNewOpen(true)}>
-            <Plus size={22} /> Novo
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="icon-btn h-11 w-11"
+              aria-label="Baixar a agenda do mês para o Google Agenda (.ics)"
+              title="Baixar a agenda do mês (.ics)"
+              onClick={() => {
+                const month = day.slice(0, 7);
+                downloadFile(`/admin/agenda.ics?month=${month}`, `agenda-${month}.ics`).catch((e) => toast((e as Error).message));
+              }}
+            >
+              <CalendarArrowDown size={20} />
+            </button>
+            <button className="btn-pill" onClick={() => setNewOpen(true)}>
+              <Plus size={22} /> Novo
+            </button>
+          </div>
         }
       />
 
