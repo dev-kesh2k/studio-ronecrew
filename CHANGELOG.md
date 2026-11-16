@@ -4,6 +4,7 @@ Mudanças relevantes do app, da mais nova para a mais antiga. Cada item é um pu
 
 ## 2026-11-15
 
+- **Segurança:** limpeza periódica dos limites de tentativas e de consultas por celular; cabeçalhos nosniff, Referrer-Policy e X-Frame-Options (pelo Traefik do Hub)
 - **Correção:** valor digitado com ponto decimal ("350.50") agora vale R$ 350,50; antes virava R$ 35.050,00
 - **CI:** testes do frontend (TypeScript direto no Node 22) e lint no-undef do backend
 - **Novo:** cliente pode *Adicionar ao calendário* a própria sessão (.ics) (#26–#29)
