@@ -123,7 +123,7 @@ export default function Profile() {
             <Camera size={16} />
           </span>
           <input type="file" accept="image/*" className="sr-only" onChange={(e) => {
-              changeAvatar(e.target.files?.[0]);
+              void changeAvatar(e.target.files?.[0]);
               e.target.value = '';
             }}
           />

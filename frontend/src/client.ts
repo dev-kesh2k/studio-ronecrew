@@ -66,11 +66,16 @@ export function toggleFavorite(id: string) {
   return next.includes(id);
 }
 
+/** Bytes aleatórios do gerador seguro do navegador, em hexadecimal (funciona também fora de HTTPS). */
+function randomHex(bytes: number) {
+  return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 /** Id aleatório do aparelho (uma curtida por foto em cada aparelho). */
 export function deviceId() {
   let id = localStorage.getItem('ronecrew:device') || '';
   if (!/^[A-Za-z0-9-]{8,64}$/.test(id)) {
-    id = crypto.randomUUID?.() || `dev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    id = crypto.randomUUID?.() || `dev-${Date.now().toString(36)}-${randomHex(4)}`;
     localStorage.setItem('ronecrew:device', id);
   }
   return id;

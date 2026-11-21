@@ -12,9 +12,15 @@ interface Link {
   icon: ComponentType<{ size?: number | string }>;
 }
 
+/** Tudo antes da primeira barra (sem regex com retrocesso). */
+function beforeSlash(s: string) {
+  const i = s.indexOf('/');
+  return i === -1 ? s : s.slice(0, i);
+}
+
 /** Redes do estúdio cadastradas em Configurações (Instagram e TikTok pelo @; os outros por link). */
 export function socialLinks(c: Config): Link[] {
-  const at = (v: string) => v.replace(/^@/, '').replace(/^https?:\/\/(www\.)?(instagram|tiktok)\.com\/@?/i, '').replace(/\/.*$/, '');
+  const at = (v: string) => beforeSlash(v.replace(/^@/, '').replace(/^https?:\/\/(www\.)?(instagram|tiktok)\.com\/@?/i, ''));
   const list: Link[] = [];
   if (c.instagram) list.push({ key: 'ig', label: 'Instagram', handle: `@${at(c.instagram)}`, href: `https://instagram.com/${at(c.instagram)}`, icon: InstagramLogo });
   if (c.tiktok) list.push({ key: 'tt', label: 'TikTok', handle: `@${at(c.tiktok)}`, href: `https://www.tiktok.com/@${at(c.tiktok)}`, icon: Music2 });
