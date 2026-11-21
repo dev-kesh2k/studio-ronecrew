@@ -43,7 +43,7 @@ export default function AdminLogin() {
           <IconInput icon={Mail} type="email" inputMode="email" placeholder="E-mail" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required aria-label="E-mail" />
           <PasswordInput icon={Lock} placeholder="Senha" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required aria-label="Senha" />
           <FormError message={error} />
-          <button className="btn-primary" disabled={busy}>
+          <button type="submit" className="btn-primary" disabled={busy}>
             {busy ? 'Entrando…' : 'Entrar'}
           </button>
         </form>

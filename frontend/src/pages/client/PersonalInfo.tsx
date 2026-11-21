@@ -56,7 +56,7 @@ export default function PersonalInfo() {
           <input className="input" type="tel" inputMode="tel" autoComplete="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} required={!isAdmin} />
         </Field>
         <FormError message={err} />
-        <button className="btn-primary" disabled={busy}>
+        <button type="submit" className="btn-primary" disabled={busy}>
           Salvar
         </button>
       </form>
@@ -70,7 +70,7 @@ export default function PersonalInfo() {
           <PasswordInput autoComplete="new-password" minLength={8} value={pw.password} onChange={(e) => setPw({ ...pw, password: e.target.value })} required />
         </Field>
         <FormError message={pwErr} />
-        <button className="btn-secondary" disabled={busy}>
+        <button type="submit" className="btn-secondary" disabled={busy}>
           Alterar senha
         </button>
       </form>

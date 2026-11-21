@@ -60,25 +60,25 @@ function WeekBars({ weeks }: { weeks: Week[] }) {
         {weeks.map((w, i) => {
           const px = w.totalCents > 0 ? Math.max(4, Math.round((w.totalCents / max) * 150)) : 0;
           return (
-            <button
-              key={w.from}
-              type="button"
-              role="listitem"
-              aria-label={`${w.label}: ${brl(w.totalCents)}`}
-              onMouseEnter={() => setHover(i)}
-              onMouseLeave={() => setHover(null)}
-              onFocus={() => setHover(i)}
-              onBlur={() => setHover(null)}
-              onClick={() => setHover(i)}
-              className="block h-[160px] min-w-0 flex-1 px-1.5 sm:px-3"
-            >
-              <div className="relative mx-auto h-full w-full max-w-[56px]">
-                <div
-                  className={`absolute inset-x-0 bottom-0 rounded-t-[4px] transition-all ${w.current ? 'bg-accent' : hover === i ? 'bg-soft' : 'bg-line2'}`}
-                  style={{ height: px }}
-                />
-              </div>
-            </button>
+            <div key={w.from} role="listitem" className="block h-[160px] min-w-0 flex-1">
+              <button
+                type="button"
+                aria-label={`${w.label}: ${brl(w.totalCents)}`}
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+                onFocus={() => setHover(i)}
+                onBlur={() => setHover(null)}
+                onClick={() => setHover(i)}
+                className="block h-full w-full px-1.5 sm:px-3"
+              >
+                <div className="relative mx-auto h-full w-full max-w-[56px]">
+                  <div
+                    className={`absolute inset-x-0 bottom-0 rounded-t-[4px] transition-all ${w.current ? 'bg-accent' : hover === i ? 'bg-soft' : 'bg-line2'}`}
+                    style={{ height: px }}
+                  />
+                </div>
+              </button>
+            </div>
           );
         })}
       </div>

@@ -203,7 +203,7 @@ export default function Services() {
                   accept="image/*"
                   className="sr-only"
                   onChange={(e) => {
-                    pickPhoto(e.target.files?.[0]);
+                    void pickPhoto(e.target.files?.[0]);
                     e.target.value = '';
                   }}
                 />

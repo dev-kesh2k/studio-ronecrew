@@ -81,7 +81,7 @@ export default function Feedback() {
             </Field>
           </div>
           <FormError message={err} />
-          <button className="btn-primary" disabled={busy}>
+          <button type="submit" className="btn-primary" disabled={busy}>
             {busy ? 'Enviando…' : 'Enviar feedback'}
           </button>
         </form>

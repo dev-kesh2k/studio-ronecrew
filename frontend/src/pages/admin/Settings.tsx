@@ -235,7 +235,7 @@ export default function Settings() {
                   accept="image/*"
                   className="sr-only"
                   onChange={(e) => {
-                    pickLogo(e.target.files?.[0]);
+                    void pickLogo(e.target.files?.[0]);
                     e.target.value = '';
                   }}
                 />
@@ -365,7 +365,7 @@ export default function Settings() {
 
         <div className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-10 md:bottom-4">
           <FormError message={err} />
-          <button className={`btn-primary w-full shadow-xl ${err ? 'mt-3' : ''}`} disabled={busy}>
+          <button type="submit" className={`btn-primary w-full shadow-xl ${err ? 'mt-3' : ''}`} disabled={busy}>
             {busy ? 'Salvando…' : 'Salvar configurações'}
           </button>
         </div>

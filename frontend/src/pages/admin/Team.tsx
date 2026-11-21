@@ -283,7 +283,7 @@ export default function Team() {
                       className="sr-only"
                       aria-label="Adicionar fotos à galeria"
                       onChange={(e) => {
-                        addPhotos(e.target.files);
+                        void addPhotos(e.target.files);
                         e.target.value = '';
                       }}
                     />

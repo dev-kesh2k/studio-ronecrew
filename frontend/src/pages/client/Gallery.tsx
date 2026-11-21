@@ -99,7 +99,7 @@ function CommentsSheet({ photo, onClose, onCount }: { photo: GalleryPhoto; onClo
           <textarea className="input min-h-[80px] resize-y" maxLength={500} value={textValue} onChange={(e) => setTextValue(e.target.value)} placeholder="Escreva um comentário…" />
         </Field>
         <FormError message={err} />
-        <button className="btn-primary" disabled={busy}>
+        <button type="submit" className="btn-primary" disabled={busy}>
           {busy ? 'Enviando…' : 'Comentar'}
         </button>
       </form>

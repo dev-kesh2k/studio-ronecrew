@@ -34,7 +34,7 @@ export default function PhoneGate({ onSubmit, text }: { onSubmit: (phone: string
         onChange={(e) => setPhone(maskPhone(e.target.value))}
       />
       <FormError message={err} />
-      <button className="btn-primary">Ver agendamentos</button>
+      <button type="submit" className="btn-primary">Ver agendamentos</button>
     </form>
   );
 }

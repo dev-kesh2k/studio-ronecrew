@@ -205,7 +205,7 @@ export function SessionSheet({ booking, onClose, onChanged, today }: { booking: 
             onClick={() => {
               const cents = parseMoney(amount);
               if (cents === null) return setErr('Informe o valor recebido');
-              run('complete', { amountCents: cents, method }, 'Sessão concluída');
+              void run('complete', { amountCents: cents, method }, 'Sessão concluída');
             }}
           >
             Concluir e registrar pagamento
