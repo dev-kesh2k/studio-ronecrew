@@ -2,6 +2,7 @@ import express from 'express';
 import { api } from './routes.js';
 import { HttpError, prisma } from './util.js';
 import { startReminderLoop } from './whatsapp.js';
+import { trimTrailingSlashes } from './validate.js';
 
 const app = express();
 app.set('trust proxy', true);
@@ -10,7 +11,7 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '4mb' }));
 
 // O proxy pode repassar /api/..., o caminho completo /<slug>/api/... ou já sem o prefixo.
-const publicPath = String(process.env.PUBLIC_PATH || '').replace(/\/+$/, '');
+const publicPath = trimTrailingSlashes(String(process.env.PUBLIC_PATH || ''));
 // Saúde com o banco: 503 quando o Postgres não responde (o healthcheck do container continua só na porta).
 app.get(['/health', `${publicPath}/health`], async (_req, res) => {
   const started = Date.now();
