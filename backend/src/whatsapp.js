@@ -1,9 +1,18 @@
 // Notificações pela API oficial do WhatsApp (Cloud API da Meta).
 // Configuração em Configurações → WhatsApp (token, ID do número, modo texto ou modelo aprovado).
 import { prisma, getSettings, todayStr, nowTime, addDays, phoneKey, brl, shortDate } from './util.js';
+import { trimTrailingSlashes } from './validate.js';
+
+/**
+ * Junta as linhas com " · " (cada trecho de espaços que tem quebra de linha vira um separador)
+ * e reduz espaços repetidos a um: mesmo resultado das regex antigas, sem retrocesso.
+ */
+export function oneLine(text) {
+  return text.replace(/\s+/g, (run) => (run.includes('\n') ? ' · ' : run)).replace(/\s{2,}/g, ' ');
+}
 
 // Em testes pode apontar para um servidor falso; em produção é a Graph API.
-const API_BASE = (process.env.WHATSAPP_API_BASE || 'https://graph.facebook.com/v21.0').replace(/\/+$/, '');
+const API_BASE = trimTrailingSlashes(process.env.WHATSAPP_API_BASE || 'https://graph.facebook.com/v21.0');
 
 /** Número no formato internacional (só dígitos, com 55). */
 export function waNumber(raw) {
@@ -43,7 +52,7 @@ export async function sendWhatsApp(toRaw, text, event, settings) {
             name: s.waTemplate,
             language: { code: s.waLanguage || 'pt_BR' },
             // Parâmetro de modelo não aceita quebra de linha nem tabulação.
-            components: [{ type: 'body', parameters: [{ type: 'text', text: text.replace(/\s*\n+\s*/g, ' · ').replace(/\s{2,}/g, ' ') }] }],
+            components: [{ type: 'body', parameters: [{ type: 'text', text: oneLine(text) }] }],
           },
         }
       : { messaging_product: 'whatsapp', to, type: 'text', text: { body: text, preview_url: true } };
@@ -77,7 +86,7 @@ export async function sendWhatsApp(toRaw, text, event, settings) {
 const first = (name) => (name || '').trim().split(/\s+/)[0] || '';
 const hello = (b) => (/^Cliente \(/.test(b.clientName) ? 'Olá!' : `Olá, ${first(b.clientName)}!`);
 const when = (b) => `${shortDate(b.date)} às ${b.time}`;
-const link = (s, b, extra = '') => (s.appUrl ? `\n${s.appUrl.replace(/\/+$/, '')}/agenda/${b.id}${extra}` : '');
+const link = (s, b, extra = '') => (s.appUrl ? `\n${trimTrailingSlashes(s.appUrl)}/agenda/${b.id}${extra}` : '');
 
 /** Texto da mensagem ao cliente para cada evento do agendamento. */
 function clientMessage(event, b, s) {

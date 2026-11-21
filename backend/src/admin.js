@@ -162,7 +162,7 @@ admin.post('/bookings/:id/approve', wrap(async (req, res) => {
   if (b.status !== 'requested') throw new HttpError(400, 'Essa solicitação já foi respondida');
   const status = b.depositPaid || b.depositCents === 0 ? 'confirmed' : 'pending_deposit';
   await prisma.booking.update({ where: { id: b.id }, data: { status } });
-  waAfter(b.id, 'approved');
+  void waAfter(b.id, 'approved');
   res.json({ status });
 }));
 
@@ -171,7 +171,7 @@ admin.post('/bookings/:id/reject', wrap(async (req, res) => {
   if (b.status !== 'requested') throw new HttpError(400, 'Essa solicitação já foi respondida');
   const reason = text(req.body.reason, 'Motivo', { max: 300 });
   await prisma.booking.update({ where: { id: b.id }, data: { status: 'rejected', cancelReason: reason || 'Horário indisponível' } });
-  waAfter(b.id, 'rejected');
+  void waAfter(b.id, 'rejected');
   res.json({ status: 'rejected' });
 }));
 
@@ -183,7 +183,7 @@ admin.post('/bookings/:id/deposit', wrap(async (req, res) => {
     prisma.booking.update({ where: { id: b.id }, data: { status: 'confirmed', depositPaid: true } }),
     prisma.payment.create({ data: { bookingId: b.id, kind: 'deposit', method, amountCents: b.depositCents, day: todayStr() } }),
   ]);
-  waAfter(b.id, 'deposit');
+  void waAfter(b.id, 'deposit');
   res.json({ status: 'confirmed' });
 }));
 
@@ -197,7 +197,7 @@ admin.post('/bookings/:id/complete', wrap(async (req, res) => {
     prisma.booking.update({ where: { id: b.id }, data: { status: 'completed', completedAt: new Date() } }),
     ...(amount > 0 ? [prisma.payment.create({ data: { bookingId: b.id, kind: 'final', method, amountCents: amount, day: todayStr() } })] : []),
   ]);
-  waAfter(b.id, 'completed');
+  void waAfter(b.id, 'completed');
   res.json({ status: 'completed', paidCents: paidCents(b) + amount });
 }));
 
@@ -206,7 +206,7 @@ admin.post('/bookings/:id/cancel', wrap(async (req, res) => {
   if (!ACTIVE_STATUSES.includes(b.status)) throw new HttpError(400, 'Esse agendamento não pode ser cancelado');
   const reason = text(req.body.reason, 'Motivo', { max: 300 });
   await prisma.booking.update({ where: { id: b.id }, data: { status: 'cancelled', cancelReason: reason || 'Cancelado pelo estúdio' } });
-  waAfter(b.id, 'cancelled');
+  void waAfter(b.id, 'cancelled');
   res.json({ status: 'cancelled' });
 }));
 

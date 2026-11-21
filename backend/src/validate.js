@@ -7,7 +7,23 @@ export class HttpError extends Error {
   }
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Tira as barras do fim (sem regex, para não ter retrocesso). */
+export function trimTrailingSlashes(s) {
+  let end = s.length;
+  while (end > 0 && s[end - 1] === '/') end--;
+  return s.slice(0, end);
+}
+
+/**
+ * Mesmo critério de /^[^\s@]+@[^\s@]+\.[^\s@]+$/ sem retrocesso: sem espaços, um único @,
+ * algo antes dele e, depois, um ponto com algo dos dois lados.
+ */
+function isEmail(s) {
+  if (/\s/.test(s)) return false;
+  const at = s.indexOf('@');
+  if (at < 1 || s.indexOf('@', at + 1) !== -1) return false;
+  return s.slice(at + 2, -1).includes('.');
+}
 
 export function text(v, field, { max = 200, required = false } = {}) {
   const s = typeof v === 'string' ? v.trim() : '';
@@ -18,7 +34,7 @@ export function text(v, field, { max = 200, required = false } = {}) {
 
 export function email(v, { required = true } = {}) {
   const s = text(v, 'E-mail', { max: 160, required }).toLowerCase();
-  if (s && !EMAIL_RE.test(s)) throw new HttpError(400, 'E-mail inválido');
+  if (s && !isEmail(s)) throw new HttpError(400, 'E-mail inválido');
   return s;
 }
 

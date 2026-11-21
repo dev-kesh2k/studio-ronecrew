@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HttpError, digits, email, formatPhone, image, int, mobile, oneOf, password, phone, phoneKey, text, url } from '../src/validate.js';
+import { HttpError, digits, email, formatPhone, image, int, mobile, oneOf, password, phone, phoneKey, text, trimTrailingSlashes, url } from '../src/validate.js';
 
 const erro = (status, re) => (e) => e instanceof HttpError && e.status === status && re.test(e.message);
 
@@ -47,4 +47,19 @@ test('image: tipos aceitos e limite de 2,5 MB', () => {
   assert.equal(image(webp).mime, 'image/webp');
   assert.throws(() => image('data:image/svg+xml;base64,PHN2Zz4='), erro(400, /Imagem inválida/));
   assert.throws(() => image(`data:image/png;base64,${Buffer.alloc(2_600_000).toString('base64')}`), erro(413, /grande/));
+});
+
+test('email: casos de borda (mesmo critério da regex antiga)', () => {
+  assert.equal(email('a@b.c'), 'a@b.c');
+  assert.equal(email('a@b.c.d'), 'a@b.c.d');
+  for (const v of ['@b.c', 'a@.c', 'a@b.', 'a@@b.c', 'a@b@c.d', 'a b@c.d', 'a@b .c']) {
+    assert.throws(() => email(v), erro(400, /inválido/), v);
+  }
+});
+
+test('trimTrailingSlashes', () => {
+  assert.equal(trimTrailingSlashes('/app///'), '/app');
+  assert.equal(trimTrailingSlashes('///'), '');
+  assert.equal(trimTrailingSlashes('https://x.com/a'), 'https://x.com/a');
+  assert.equal(trimTrailingSlashes(''), '');
 });
